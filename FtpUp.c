@@ -12,15 +12,20 @@
 #include <errno.h>
 
 #define BUFFER_SIZE 1024
-#define COMMAND_PORT 8080
 #define MAX_USERNAME_LENGTH 32
 #define MAX_PASSWORD_LENGTH 64
-#define DEFAULT_USERNAME "client"
-#define DEFAULT_PASSWORD "password"
-#define DEFAULT_TIMEOUT 900
-#define SERVER_DIRECTORY "data"
-#define TAR_COMMAND_PATH "/usr/bin/tar"
-#define THREAD_COUNT 10
+
+typedef struct Config {
+	int command_port;
+    char username[256];
+    char password[256];
+    int timeout;
+	int thread_count;
+	char server_directory[256];
+	char tar_command_path[256];	
+} Config;
+
+Config config = {0, "", "", 0, 0, "", ""}; // Инициализируем структуру
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
@@ -131,7 +136,7 @@ void run_quit(const struct user* const current_user) {
 }
 
 void run_user(struct user* const current_user, const char* const argument) {
-    if (strcmp(argument, DEFAULT_USERNAME) == 0) {
+    if (strcmp(argument, config->username) == 0) {
         send_response(current_user->control_socket, "331 Please specify the password.\r\n");
         strncpy(current_user->name, argument, MAX_USERNAME_LENGTH - 1);
     } else {
@@ -140,7 +145,7 @@ void run_user(struct user* const current_user, const char* const argument) {
 }
 
 void run_pass(struct user* const current_user, const char* const argument) {
-    if (strcmp(current_user->name, DEFAULT_USERNAME) == 0 && strcmp(argument, DEFAULT_PASSWORD) == 0) {
+    if (strcmp(current_user->name, config->username) == 0 && strcmp(argument, config->password) == 0) {
         current_user->authenticated = true;
         send_response(current_user->control_socket, "230 Logged in.\r\n");
     } else {
@@ -200,15 +205,15 @@ void run_nlst(const struct user* current_user, const char* const argument) {
     send_response(current_user->control_socket, "150 Opening ASCII mode data connection for entry list\r\n");
 
     // Получение списка файлов
-    size_t directory_path_length = strlen(SERVER_DIRECTORY);
+    size_t directory_path_length = strlen(coonfig->server_directory);
     if (argument) {
         directory_path_length += strlen(argument) + 1;
     }
     char* directory_path = calloc(directory_path_length + 1, sizeof(char));
     if (argument) {
-        snprintf(directory_path, directory_path_length + 1, "%s/%s", SERVER_DIRECTORY, argument);
+        snprintf(directory_path, directory_path_length + 1, "%s/%s", coonfig->server_directory, argument);
     } else {
-        snprintf(directory_path, directory_path_length + 1, "%s", SERVER_DIRECTORY);
+        snprintf(directory_path, directory_path_length + 1, "%s", coonfig->server_directory);
     }
     DIR* directory = opendir(directory_path);
     struct dirent* entry;
@@ -265,7 +270,7 @@ void transfer_file(const struct user* current_user, const int data_socket, const
 }
 
 void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath) {
-    if (!file_exists(TAR_COMMAND_PATH)) {
+    if (!file_exists(config->tar_command_path)) {
         fprintf(stderr, "'tar' command not found");
         send_response(current_user->control_socket, "550 tar command unavailable.\r\n");
         return;
@@ -291,9 +296,9 @@ void run_retr(const struct user* current_user, const char* const filepath) {
     if (establish_data_connection(current_user, &data_socket) == -1) {
         return;
     }
-    size_t filepath_length = strlen(SERVER_DIRECTORY) + 1 + strlen(filepath);
+    size_t filepath_length = strlen(coonfig->server_directory) + 1 + strlen(filepath);
     char* path = calloc(filepath_length + 1, sizeof(char));
-    snprintf(path, filepath_length + 1, "%s/%s", SERVER_DIRECTORY, filepath);
+    snprintf(path, filepath_length + 1, "%s/%s", coonfig->server_directory, filepath);
     if (is_dir(path)) {
         transfer_dir(current_user, data_socket, path);
     } else {
@@ -370,6 +375,48 @@ void *handle_client(void *arg) {
 }
 
 int main() {
+	FILE *fp = fopen("config.conf", "r");
+    if (fp == NULL) {
+        perror("Error opening config file");
+        return 1;
+    }
+	
+	char line[256];
+    char key[256];
+    char value[256];
+	
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "%[^=]=%s", key, value) != 2) {
+            fprintf(stderr, "Error parsing line: %s", line);
+            fclose(fp);
+            return 1;
+        }
+		
+		if (strcmp(key, "command_port") == 0) {
+            config.command_port = atoi(value);
+        } else if (strcmp(key, "username") == 0) {
+            strcpy(config.username, value);
+        } else if (strcmp(key, "password") == 0) {
+            strcpy(config.password, value);
+        } else if (strcmp(key, "timeout") == 0) {
+            config.timeout = atoi(value);
+        } else if (strcmp(key, "thread_count") == 0) {
+            config.thread_count = atoi(value);
+        } else if (strcmp(key, "server_directory") == 0) {
+            strcpy(config.server_directory, value);
+        } else if (strcmp(key, "tar_command_path") == 0) {
+            strcpy(config.tar_command_path, value);
+        }
+    }
+	
+	if (ferror(fp)) {
+        perror("Error reading config file");
+        fclose(fp);
+        return 1;
+    }
+	
+    fclose(fp);
+	
     // Создание сокета для прослушивания входящих соединений
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     // Установка сокета на переиспользование порта
@@ -381,7 +428,7 @@ int main() {
     memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(COMMAND_PORT);
+    server_address.sin_port = htons(config->command_port);
 
     // Связывание сокета с адресом и портом
     if (bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address)) == 0) {
@@ -392,7 +439,7 @@ int main() {
 	}
 
     // Установка сервера в режим прослушивания
-    if (listen(server_socket, THREAD_COUNT) < 0) {
+    if (listen(server_socket, config->thread_count) < 0) {
         fprintf(stderr, "Error listening for connections\n");
         exit(EXIT_FAILURE);
     }
@@ -410,7 +457,7 @@ int main() {
 		
 		// Установка таймаута на прием данных
 		struct timeval timeout;
-		timeout.tv_sec = DEFAULT_TIMEOUT;
+		timeout.tv_sec = config->timeout;
 		timeout.tv_usec = 0;
 		if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
 			perror("setsockopt failed");
