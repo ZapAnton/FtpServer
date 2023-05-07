@@ -37,8 +37,11 @@ struct user {
     char password[MAX_PASSWORD_LENGTH];
     bool authenticated;
     int control_socket;
+	int data_socket;
+	bool is_pasv;
     struct sockaddr_in data_address;
 	char* current_directory;
+	bool is_aborted;
 };
 
 enum Command {
@@ -54,6 +57,7 @@ enum Command {
 	PWD,
 	MKD,
 	RMD,
+	ABOR,
     UNKNOWN,
 };
 
@@ -123,6 +127,8 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = MKD;
 	} else if (strcmp(command_str, "RMD") == 0) {
         command = RMD;
+	} else if (strcmp(command_str, "ABOR") == 0) {
+        command = ABOR;
 	}
     return command;
 }
@@ -130,7 +136,7 @@ enum Command command_str_to_enum(const char* const command_str) {
 void run_help(struct user* current_user, const char* argument) {
     if (argument == NULL) {
         send_response(current_user->control_socket, "214-The following commands are recognized.\r\n");
-        send_response(current_user->control_socket, " CWD HELP MKD NLST PASS PORT PWD QUIT RETR RMD SYST USER\r\n");
+        send_response(current_user->control_socket, " ABOR CWD HELP MKD NLST PASS PORT PWD QUIT RETR RMD SYST USER\r\n");
         send_response(current_user->control_socket, "214 Help OK.\r\n");
     } else {
         send_response(current_user->control_socket, "214 Help not available for specified command.\r\n");
@@ -189,7 +195,8 @@ void run_port(struct user* const current_user, char* argument) {
 	data_address.sin_port = htons(data_port);
 	// Сохранение IP-адреса и порта для передачи данных в структуре current_user
 	memcpy(&(current_user->data_address), &data_address, sizeof(data_address));
-
+	current_user->is_pasv = false;
+	current_user->is_aborted = false;
 	// Отправка клиенту сообщения об успешной установке порта для передачи данных
 	char response[BUFFER_SIZE];
 	snprintf(response, BUFFER_SIZE, "200 PORT command successful (%s:%d).\r\n", ip_str, data_port);
@@ -202,6 +209,9 @@ int establish_data_connection(const struct user* current_user, int* data_socket)
         send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
         return -1;
     }
+	
+	current_user->data_socket = data_socket;
+	
     return 0;
 }
 
@@ -305,6 +315,16 @@ void run_retr(const struct user* current_user, const char* const filepath) {
         return;
     }
     send_response(current_user->control_socket, "150 Opening ASCII mode data connection\r\n");
+	//TODO: С этим надо что-то сделать....
+	/*if (current_user->data_socket < 0) {
+        send_response(current_user->control_socket, "425 No data connection");
+        return;
+    }
+    if (current_user->is_aborted) {
+        send_response(current_user->control_socket, "426 Connection aborted");
+        return;
+    }*/
+	
     int data_socket = 0;
     if (establish_data_connection(current_user, &data_socket) == -1) {
         return;
@@ -348,6 +368,11 @@ void run_cwd(struct user* current_user, const char* argument) {
 }
 
 void run_pwd(struct user* current_user) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
     char* current_directory = current_user->current_directory;
     char response[BUFFER_SIZE];
     snprintf(response, BUFFER_SIZE, "257 \"%s\"\r\n", current_directory);
@@ -371,6 +396,11 @@ void get_absolute_path(char* relative_path, char* absolute_path, char* current_d
 }
 
 void run_mkd(struct user* current_user, char* argument) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
     char response[BUFFER_SIZE];
     char directory[BUFFER_SIZE];
     get_absolute_path(argument, directory, current_user->current_directory);
@@ -383,23 +413,41 @@ void run_mkd(struct user* current_user, char* argument) {
 }
 
 void run_rmd(struct user* current_user, char* argument) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
     char absolute_path[BUFFER_SIZE];
     get_absolute_path(argument, absolute_path, current_user->current_directory);
 
     // Проверка, существует ли каталог и есть ли у пользователя разрешение на его удаление
     if (access(absolute_path, F_OK) == -1 || access(absolute_path, W_OK) == -1) {
-        send_response(current_user->data_socket, FTP_RESPONSE_550, "Requested action not taken. File unavailable.");
+        send_response(current_user->data_socket, "550 Requested action not taken. File unavailable.");
         return;
     }
 
-    // Try to remove the directory
+    // Попытка удалить каталог
     if (rmdir(absolute_path) == -1) {
-        send_response(current_user->data_socket, FTP_RESPONSE_550, "Requested action not taken. File unavailable.");
+        send_response(current_user->data_socket, "550 Requested action not taken. File unavailable.");
         return;
     }
+	
+    send_response(data_socket, "250 Requested file action okay, completed.");
+}
 
-    // Send response to client
-    send_response(data_socket, FTP_RESPONSE_250, "Requested file action okay, completed.");
+void run_abor(struct user* current_user) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
+    if (current_user->data_socket > 0) {
+        close(current_user->data_socket);
+        current_user->data_socket = -1;
+    }
+    current_user->is_aborted = 1;
+    send_response(current_user->control_socket, "226 Abort successful");
 }
 
 void process_command(char* buffer, struct user* current_user) {
@@ -413,6 +461,9 @@ void process_command(char* buffer, struct user* current_user) {
             break;
 		case PWD:
             run_pwd(current_user);
+            break;
+		case ABOR:
+            run_abor(current_user);
             break;
 		case HELP:
             run_help(current_user, argument);
