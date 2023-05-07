@@ -38,6 +38,7 @@ struct user {
     bool authenticated;
     int control_socket;
     struct sockaddr_in data_address;
+	char* current_directory;
 };
 
 enum Command {
@@ -49,6 +50,7 @@ enum Command {
     PORT,
     NLST,
     RETR,
+	CWD,
     UNKNOWN,
 };
 
@@ -110,6 +112,8 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = NLST;
     } else if (strcmp(command_str, "RETR") == 0) {
         command = RETR;
+    } else if (strcmp(command_str, "CWD") == 0) {
+        command = CWD;
     }
     return command;
 }
@@ -309,6 +313,31 @@ void run_retr(const struct user* current_user, const char* const filepath) {
     close(data_socket);
 }
 
+void run_cwd(struct user* current_user, const char* argument) {
+    if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
+	char* new_directory = argument;
+    // Обработка относительного пути
+    if (argument[0] != '/') {
+        char* current_directory = current_user->current_directory;
+        size_t len = strlen(current_directory) + strlen(argument) + 2;
+        new_directory = (char*) malloc(len);
+        snprintf(new_directory, len, "%s/%s", current_directory, argument);
+    }
+    // Проверка, что новый путь существует
+    if (access(new_directory, F_OK) == -1) {
+        send_response(current_user->control_socket, "550 Invalid path\r\n");
+        return;
+    }
+    // Обновление текущего рабочего каталога
+    free(current_user->current_directory);
+    current_user->current_directory = new_directory;
+    send_response(current_user->control_socket, "250 Directory changed\r\n");
+}
+
 void process_command(char* buffer, struct user* current_user) {
     puts(buffer);
     const char* command_str = strtok(buffer, " \r\n");
@@ -336,6 +365,9 @@ void process_command(char* buffer, struct user* current_user) {
         case RETR:
             run_retr(current_user, argument);
             break;
+		case CWD:
+            run_cwd(current_user, argument);
+            break;
         case SYST:
             send_response(current_user->control_socket, "315 UNIX.\r\n");
             break;
@@ -346,6 +378,10 @@ void process_command(char* buffer, struct user* current_user) {
             send_response(current_user->control_socket, "500 Syntax error, command unrecognized.\r\n");
             break;
     }
+	
+	//TODO: Нужно ли это делать?
+	free(command);
+    free(argument);
 }
 
 void *handle_client(void *arg) {
