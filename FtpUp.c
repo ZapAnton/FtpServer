@@ -51,6 +51,9 @@ enum Command {
     NLST,
     RETR,
 	CWD,
+	PWD,
+	MKD,
+	RMD,
     UNKNOWN,
 };
 
@@ -114,14 +117,20 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = RETR;
     } else if (strcmp(command_str, "CWD") == 0) {
         command = CWD;
-    }
+    } else if (strcmp(command_str, "PWD") == 0) {
+        command = PWD;
+	} else if (strcmp(command_str, "MKD") == 0) {
+        command = MKD;
+	} else if (strcmp(command_str, "RMD") == 0) {
+        command = RMD;
+	}
     return command;
 }
 
 void run_help(struct user* current_user, const char* argument) {
     if (argument == NULL) {
         send_response(current_user->control_socket, "214-The following commands are recognized.\r\n");
-        send_response(current_user->control_socket, " HELP NLST PASS PORT QUIT RETR SYST USER\r\n");
+        send_response(current_user->control_socket, " CWD HELP MKD NLST PASS PORT PWD QUIT RETR RMD SYST USER\r\n");
         send_response(current_user->control_socket, "214 Help OK.\r\n");
     } else {
         send_response(current_user->control_socket, "214 Help not available for specified command.\r\n");
@@ -338,6 +347,61 @@ void run_cwd(struct user* current_user, const char* argument) {
     send_response(current_user->control_socket, "250 Directory changed\r\n");
 }
 
+void run_pwd(struct user* current_user) {
+    char* current_directory = current_user->current_directory;
+    char response[BUFFER_SIZE];
+    snprintf(response, BUFFER_SIZE, "257 \"%s\"\r\n", current_directory);
+    send_response(current_user->control_socket, response);
+}
+
+void get_absolute_path(char* relative_path, char* absolute_path, char* current_directory) {
+    if (relative_path[0] == '/') {
+        // Абсолютный путь уже указан
+        strncpy(absolute_path, relative_path, BUFFER_SIZE);
+    } else {
+        // Указан относительный путь, поэтому нужно добавить его в текущий каталог
+        if (current_directory[strlen(current_directory) - 1] == '/') {
+            // Текущий каталог уже заканчивается косой чертой, поэтому не нужно его добавлять
+            snprintf(absolute_path, BUFFER_SIZE, "%s%s", current_directory, relative_path);
+        } else {
+            // Текущий каталог не заканчивается косой чертой, поэтому нужно добавить его
+            snprintf(absolute_path, BUFFER_SIZE, "%s/%s", current_directory, relative_path);
+        }
+    }
+}
+
+void run_mkd(struct user* current_user, char* argument) {
+    char response[BUFFER_SIZE];
+    char directory[BUFFER_SIZE];
+    get_absolute_path(argument, directory, current_user->current_directory);
+    if (mkdir(directory, 0777) == 0) {
+        snprintf(response, BUFFER_SIZE, "257 \"%s\" created\r\n", argument);
+    } else {
+        snprintf(response, BUFFER_SIZE, "550 %s\r\n", strerror(errno));
+    }
+    send_response(current_user->control_socket, response);
+}
+
+void run_rmd(struct user* current_user, char* argument) {
+    char absolute_path[BUFFER_SIZE];
+    get_absolute_path(argument, absolute_path, current_user->current_directory);
+
+    // Проверка, существует ли каталог и есть ли у пользователя разрешение на его удаление
+    if (access(absolute_path, F_OK) == -1 || access(absolute_path, W_OK) == -1) {
+        send_response(current_user->data_socket, FTP_RESPONSE_550, "Requested action not taken. File unavailable.");
+        return;
+    }
+
+    // Try to remove the directory
+    if (rmdir(absolute_path) == -1) {
+        send_response(current_user->data_socket, FTP_RESPONSE_550, "Requested action not taken. File unavailable.");
+        return;
+    }
+
+    // Send response to client
+    send_response(data_socket, FTP_RESPONSE_250, "Requested file action okay, completed.");
+}
+
 void process_command(char* buffer, struct user* current_user) {
     puts(buffer);
     const char* command_str = strtok(buffer, " \r\n");
@@ -346,6 +410,9 @@ void process_command(char* buffer, struct user* current_user) {
     switch (command) {
         case QUIT:
             run_quit(current_user);
+            break;
+		case PWD:
+            run_pwd(current_user);
             break;
 		case HELP:
             run_help(current_user, argument);
@@ -367,6 +434,12 @@ void process_command(char* buffer, struct user* current_user) {
             break;
 		case CWD:
             run_cwd(current_user, argument);
+            break;
+		case MKD:
+            run_mkd(current_user, argument);
+            break;
+		case RMD:
+            run_rmd(current_user, argument);
             break;
         case SYST:
             send_response(current_user->control_socket, "315 UNIX.\r\n");
