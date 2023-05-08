@@ -52,6 +52,7 @@ enum Command {
     SYST,
     PORT,
     NLST,
+	LIST,
     RETR,
 	CWD,
 	PWD,
@@ -117,6 +118,8 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = PORT;
     } else if (strcmp(command_str, "NLST") == 0) {
         command = NLST;
+	} else if (strcmp(command_str, "LIST") == 0) {
+        command = LIST;
     } else if (strcmp(command_str, "RETR") == 0) {
         command = RETR;
     } else if (strcmp(command_str, "CWD") == 0) {
@@ -133,10 +136,10 @@ enum Command command_str_to_enum(const char* const command_str) {
     return command;
 }
 
-void run_help(struct user* current_user, const char* argument) {
+void run_help(struct user* current_user, const char* const argument) {
     if (argument == NULL) {
         send_response(current_user->control_socket, "214-The following commands are recognized.\r\n");
-        send_response(current_user->control_socket, " ABOR CWD HELP MKD NLST PASS PORT PWD QUIT RETR RMD SYST USER\r\n");
+        send_response(current_user->control_socket, " ABOR CWD HELP LIST MKD NLST PASS PORT PWD QUIT RETR RMD SYST USER\r\n");
         send_response(current_user->control_socket, "214 Help OK.\r\n");
     } else {
         send_response(current_user->control_socket, "214 Help not available for specified command.\r\n");
@@ -150,8 +153,6 @@ void run_quit(const struct user* const current_user) {
         close(current_user->data_socket);
         current_user->data_socket = -1;
     }
-	
-	restart = true;
 }
 
 void run_user(struct user* const current_user, const char* const argument) {
@@ -172,7 +173,7 @@ void run_pass(struct user* const current_user, const char* const argument) {
     }
 }
 
-void run_port(struct user* const current_user, char* argument) {
+void run_port(struct user* const current_user, const char* const argument) {
     if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -228,15 +229,15 @@ void run_nlst(const struct user* current_user, const char* const argument) {
     send_response(current_user->control_socket, "150 Opening ASCII mode data connection for entry list\r\n");
 
     // Получение списка файлов
-    size_t directory_path_length = strlen(coonfig->server_directory);
+    size_t directory_path_length = strlen(config->server_directory);
     if (argument) {
         directory_path_length += strlen(argument) + 1;
     }
     char* directory_path = calloc(directory_path_length + 1, sizeof(char));
     if (argument) {
-        snprintf(directory_path, directory_path_length + 1, "%s/%s", coonfig->server_directory, argument);
+        snprintf(directory_path, directory_path_length + 1, "%s/%s", config->server_directory, argument);
     } else {
-        snprintf(directory_path, directory_path_length + 1, "%s", coonfig->server_directory);
+        snprintf(directory_path, directory_path_length + 1, "%s", config->server_directory);
     }
     DIR* directory = opendir(directory_path);
     struct dirent* entry;
@@ -329,9 +330,9 @@ void run_retr(const struct user* current_user, const char* const filepath) {
     if (establish_data_connection(current_user, &data_socket) == -1) {
         return;
     }
-    size_t filepath_length = strlen(coonfig->server_directory) + 1 + strlen(filepath);
+    size_t filepath_length = strlen(config->server_directory) + 1 + strlen(filepath);
     char* path = calloc(filepath_length + 1, sizeof(char));
-    snprintf(path, filepath_length + 1, "%s/%s", coonfig->server_directory, filepath);
+    snprintf(path, filepath_length + 1, "%s/%s", config->server_directory, filepath);
     if (is_dir(path)) {
         transfer_dir(current_user, data_socket, path);
     } else {
@@ -342,7 +343,116 @@ void run_retr(const struct user* current_user, const char* const filepath) {
     close(data_socket);
 }
 
-void run_cwd(struct user* current_user, const char* argument) {
+char* format_perms(mode_t mode) {
+    char *perms = (char*)malloc(10 * sizeof(char));
+    if (perms == NULL) {
+        return NULL;
+    }
+    strcpy(perms, "---------");
+    if (S_ISDIR(mode)) {
+        perms[0] = 'd';
+    }
+    if (mode & S_IRUSR) {
+        perms[1] = 'r';
+    }
+    if (mode & S_IWUSR) {
+        perms[2] = 'w';
+    }
+    if (mode & S_IXUSR) {
+        perms[3] = 'x';
+    }
+    if (mode & S_IRGRP) {
+        perms[4] = 'r';
+    }
+    if (mode & S_IWGRP) {
+        perms[5] = 'w';
+    }
+    if (mode & S_IXGRP) {
+        perms[6] = 'x';
+    }
+    if (mode & S_IROTH) {
+        perms[7] = 'r';
+    }
+    if (mode & S_IWOTH) {
+        perms[8] = 'w';
+    }
+    if (mode & S_IXOTH) {
+        perms[9] = 'x';
+    }
+    return perms;
+}
+
+char* format_time(time_t mtime) {
+    char *time_str = (char*)malloc(20 * sizeof(char));
+    if (time_str == NULL) {
+        return NULL;
+    }
+    struct tm *ltm = localtime(&mtime);
+    strftime(time_str, 20, "%b %d %H:%M", ltm);
+    return time_str;
+}
+
+void run_list(const struct user* const current_user, const char* const argument) {    
+    if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+    int data_socket = 0;
+    if (establish_data_connection(current_user, &data_socket) == -1) {
+        return;
+    }
+    // Отправка клиенту сообщения о начале передачи списка файлов
+    send_response(current_user->control_socket, "150 Opening ASCII mode data connection for entry list\r\n");
+
+    // Получение списка файлов
+    size_t directory_path_length = strlen(config->server_directory);
+    if (argument) {
+        directory_path_length += strlen(argument) + 1;
+    }
+    char* directory_path = calloc(directory_path_length + 1, sizeof(char));
+    if (argument) {
+        snprintf(directory_path, directory_path_length + 1, "%s/%s", config->server_directory, argument);
+    } else {
+        snprintf(directory_path, directory_path_length + 1, "%s", config->server_directory);
+    }
+    DIR* directory = opendir(directory_path);
+	if (dir == NULL) {
+		send_response(current_user->control_socket, "550 Failed to open directory.");
+		return;
+	}
+    struct dirent* entry;
+    char buffer[BUFFER_SIZE];
+    while ((entry = readdir(directory)) != NULL) {
+		if (entry->d_name[0] == '.') {
+			continue;
+		}
+		sprintf(buffer, "%s/%s", directory_path, entry->d_name);
+		struct stat info;
+		if (stat(buffer, &info) == -1) {
+			send_response(current_user->control_socket, "550 Failed to get file information.");
+			closedir(directory);
+			return;
+		}
+		char *type = (S_ISDIR(info.st_mode)) ? "d" : "-";
+		char *perms = format_perms(info.st_mode);
+		char *mtime = format_time(info.st_mtime);
+		char filename[BUFFER_SIZE];
+		strncpy(filename, entry->d_name, BUFFER_SIZE);
+		send_response(data_socket, "%s%s %3lu %-8d %-8d %8lu %s %s\r\n", type, perms,
+					  (unsigned long)info.st_nlink, info.st_uid, info.st_gid,
+					  (unsigned long)info.st_size, mtime, filename);
+		free(perms);
+		free(mtime);
+	}
+    closedir(directory);
+    free(directory_path);
+
+    // Закрытие соединения для передачи данных
+    close(data_socket);
+    send_response(current_user->control_socket, "226 Transfer complete.\r\n");
+}
+
+void run_cwd(struct user* const current_user, const char* const argument) {
     if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -367,7 +477,7 @@ void run_cwd(struct user* current_user, const char* argument) {
     send_response(current_user->control_socket, "250 Directory changed\r\n");
 }
 
-void run_pwd(struct user* current_user) {
+void run_pwd(const struct user* const current_user) {
 	if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -395,7 +505,7 @@ void get_absolute_path(char* relative_path, char* absolute_path, char* current_d
     }
 }
 
-void run_mkd(struct user* current_user, char* argument) {
+void run_mkd(const struct user* const current_user, const char* const argument) {
 	if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -412,7 +522,7 @@ void run_mkd(struct user* current_user, char* argument) {
     send_response(current_user->control_socket, response);
 }
 
-void run_rmd(struct user* current_user, char* argument) {
+void run_rmd(const struct user* const current_user, const char* const argument) {
 	if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -436,7 +546,7 @@ void run_rmd(struct user* current_user, char* argument) {
     send_response(data_socket, "250 Requested file action okay, completed.");
 }
 
-void run_abor(struct user* current_user) {
+void run_abor(struct user* const current_user) {
 	if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -479,6 +589,9 @@ void process_command(char* buffer, struct user* current_user) {
             break;
         case NLST:
             run_nlst(current_user, argument);
+            break;
+		case LIST:
+            run_list(current_user, argument);
             break;
         case RETR:
             run_retr(current_user, argument);
