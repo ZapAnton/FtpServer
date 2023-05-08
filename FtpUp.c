@@ -46,7 +46,8 @@ struct user {
 };
 
 enum Command {
-    QUIT,
+    NOOP,
+	QUIT,
 	HELP,
     USER,
     PASS,
@@ -112,7 +113,9 @@ void send_response(int client_socket, const char* response) {
 
 enum Command command_str_to_enum(const char* const command_str) {
     enum Command command = UNKNOWN;
-    if (strcmp(command_str, "QUIT") == 0) {
+	if (strcmp(command_str, "NOOP") == 0) {
+        command = NOOP;
+    } else if (strcmp(command_str, "QUIT") == 0) {
         command = QUIT;
 	} else if (strcmp(command_str, "HELP") == 0) {
         command = HELP;
@@ -161,7 +164,7 @@ enum Command command_str_to_enum(const char* const command_str) {
 void run_help(struct user* current_user, const char* const argument) {
     if (argument == NULL) {
         send_response(current_user->control_socket, "214-The following commands are recognized.\r\n");
-        send_response(current_user->control_socket, " ABOR CWD DELE GET HELP LIST MKD NLST PASS PASV PORT PWD QUIT RETR RMD RNFR RNTO STOR SYST UPLOAD USER\r\n");
+        send_response(current_user->control_socket, " ABOR CWD DELE GET HELP LIST MKD NLST NOOP PASS PASV PORT PWD QUIT RETR RMD RNFR RNTO STOR SYST UPLOAD USER\r\n");
         send_response(current_user->control_socket, "214 Help OK.\r\n");
     } else {
         send_response(current_user->control_socket, "214 Help not available for specified command.\r\n");
@@ -738,6 +741,9 @@ void process_command(char* buffer, struct user* current_user) {
             break;
 		case RMD:
             run_rmd(current_user, argument);
+            break;
+		case NOOP:
+            send_response(current_user->control_socket, "200 NOOP command successful.\r\n");
             break;
         case SYST:
             send_response(current_user->control_socket, "315 UNIX.\r\n");
