@@ -42,6 +42,7 @@ struct user {
     struct sockaddr_in data_address;
 	char* current_directory;
 	bool is_aborted;
+	char rnfr_name[BUFFER_SIZE];
 };
 
 enum Command {
@@ -63,6 +64,8 @@ enum Command {
 	PWD,
 	MKD,
 	RMD,
+	RNFR,
+	RNTO,
 	ABOR,
     UNKNOWN,
 };
@@ -145,6 +148,10 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = MKD;
 	} else if (strcmp(command_str, "RMD") == 0) {
         command = RMD;
+	} else if (strcmp(command_str, "RNFR") == 0) {
+        command = RNFR;
+	} else if (strcmp(command_str, "RNTO") == 0) {
+        command = RNTO;
 	} else if (strcmp(command_str, "ABOR") == 0) {
         command = ABOR;
 	}
@@ -154,7 +161,7 @@ enum Command command_str_to_enum(const char* const command_str) {
 void run_help(struct user* current_user, const char* const argument) {
     if (argument == NULL) {
         send_response(current_user->control_socket, "214-The following commands are recognized.\r\n");
-        send_response(current_user->control_socket, " ABOR CWD DELE GET HELP LIST MKD NLST PASS PASV PORT PWD QUIT RETR RMD STOR SYST UPLOAD USER\r\n");
+        send_response(current_user->control_socket, " ABOR CWD DELE GET HELP LIST MKD NLST PASS PASV PORT PWD QUIT RETR RMD RNFR RNTO STOR SYST UPLOAD USER\r\n");
         send_response(current_user->control_socket, "214 Help OK.\r\n");
     } else {
         send_response(current_user->control_socket, "214 Help not available for specified command.\r\n");
@@ -632,6 +639,40 @@ void run_dele(struct user* const current_user, const char* const argument) {
     }
 }
 
+void run_rnfr(struct user* const current_user, const char* const argument) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
+    char filename[BUFFER_SIZE];
+    snprintf(filename, BUFFER_SIZE, "%s/%s", current_user->current_directory, argument);
+    if (access(filename, F_OK) == -1) {
+        send_response(current_user->control_socket, "550 File or directory not found.");
+        return;
+    }
+    strncpy(current_user->rnfr_name, argument, BUFFER_SIZE);
+    send_response(current_user->control_socket, "350 RNFR accepted - file exists, ready for destination.");
+}
+
+void run_rnto(struct user* const current_user, const char* const argument) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
+    char old_filename[BUFFER_SIZE];
+    char new_filename[BUFFER_SIZE];
+    snprintf(old_filename, BUFFER_SIZE, "%s/%s", current_user->current_directory, current_user->rnfr_name);
+    snprintf(new_filename, BUFFER_SIZE, "%s/%s", current_user->current_directory, argument);
+    if (rename(old_filename, new_filename) == -1) {
+        send_response(current_user->control_socket, "550 Failed to rename file or directory.");
+        return;
+    }
+    send_response(current_user->control_socket, "250 RNTO successful.");
+	//TODO: current_user->rnfr_name нужно ли очищать?
+}
+
 void process_command(char* buffer, struct user* current_user) {
     puts(buffer);
     const char* command_str = strtok(buffer, " \r\n");
@@ -682,6 +723,12 @@ void process_command(char* buffer, struct user* current_user) {
             break;
 		case DELE:
             run_dele(current_user, argument);
+            break;
+		case RNFR:
+            run_rnfr(current_user, argument);
+            break;
+		case RNTO:
+            run_rnto(current_user, argument);
             break;
 		case CWD:
             run_cwd(current_user, argument);
