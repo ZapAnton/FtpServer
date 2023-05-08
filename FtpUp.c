@@ -51,9 +51,14 @@ enum Command {
     PASS,
     SYST,
     PORT,
+	PASV,
     NLST,
 	LIST,
+	STOR,
+	UPLOAD,
     RETR,
+	GET,
+	DELE,
 	CWD,
 	PWD,
 	MKD,
@@ -116,12 +121,22 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = SYST;
     } else if (strcmp(command_str, "PORT") == 0) {
         command = PORT;
+	} else if (strcmp(command_str, "PASV") == 0) {
+        command = PASV;
     } else if (strcmp(command_str, "NLST") == 0) {
         command = NLST;
 	} else if (strcmp(command_str, "LIST") == 0) {
         command = LIST;
+	} else if (strcmp(command_str, "STOR") == 0) {
+        command = STOR;
+	} else if (strcmp(command_str, "UPLOAD") == 0) {
+        command = UPLOAD;
     } else if (strcmp(command_str, "RETR") == 0) {
         command = RETR;
+	} else if (strcmp(command_str, "GET") == 0) {
+        command = GET;
+	} else if (strcmp(command_str, "DELE") == 0) {
+        command = DELE;
     } else if (strcmp(command_str, "CWD") == 0) {
         command = CWD;
     } else if (strcmp(command_str, "PWD") == 0) {
@@ -139,7 +154,7 @@ enum Command command_str_to_enum(const char* const command_str) {
 void run_help(struct user* current_user, const char* const argument) {
     if (argument == NULL) {
         send_response(current_user->control_socket, "214-The following commands are recognized.\r\n");
-        send_response(current_user->control_socket, " ABOR CWD HELP LIST MKD NLST PASS PORT PWD QUIT RETR RMD SYST USER\r\n");
+        send_response(current_user->control_socket, " ABOR CWD DELE GET HELP LIST MKD NLST PASS PASV PORT PWD QUIT RETR RMD STOR SYST UPLOAD USER\r\n");
         send_response(current_user->control_socket, "214 Help OK.\r\n");
     } else {
         send_response(current_user->control_socket, "214 Help not available for specified command.\r\n");
@@ -202,6 +217,10 @@ void run_port(struct user* const current_user, const char* const argument) {
 	char response[BUFFER_SIZE];
 	snprintf(response, BUFFER_SIZE, "200 PORT command successful (%s:%d).\r\n", ip_str, data_port);
 	send_response(current_user->control_socket, response);
+}
+
+void run_pasv(struct user* const current_user, const char* const argument) {
+	
 }
 
 int establish_data_connection(const struct user* current_user, int* data_socket) {
@@ -341,6 +360,10 @@ void run_retr(const struct user* current_user, const char* const filepath) {
     free(path);
     // Закрытие соединения для передачи данных
     close(data_socket);
+}
+
+void run_get(const struct user* current_user, const char* const filepath) {
+	
 }
 
 char* format_perms(mode_t mode) {
@@ -560,6 +583,55 @@ void run_abor(struct user* const current_user) {
     send_response(current_user->control_socket, "226 Abort successful");
 }
 
+void run_stor(struct user* const current_user, const char* const argument) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
+    if (current_user->data_socket == -1) {
+        send_response(current_user->control_socket, "425 Use PORT or PASV first.");
+        return;
+    }
+    char path[BUFFER_SIZE];
+	get_absolute_path(argument, path, current_user->current_directory);
+    FILE *file = fopen(path, "wb");
+    if (file == NULL) {
+        send_response(current_user->control_socket, "550 Failed to open file.");
+        return;
+    }
+    int n;
+    char buf[BUFFER_SIZE];
+    while ((n = read(current_user->data_socket, buf, BUFFER_SIZE)) > 0) {
+        if (fwrite(buf, 1, n, file) != n) {
+            send_response(current_user->control_socket, "550 Failed to write file.");
+            fclose(file);
+            return;
+        }
+    }
+    fclose(file);
+    send_response(current_user->control_socket, "226 Transfer complete.");
+}
+
+void run_upload(struct user* const current_user, const char* const argument) {
+	
+}
+
+void run_dele(struct user* const current_user, const char* const argument) {
+	if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
+	
+    char filepath[BUFFER_SIZE];
+	get_absolute_path(argument, path, current_user->current_directory);
+    if (remove(filepath) == 0) {
+        send_response(current_user->control_socket, "250 File deleted.");
+    } else {
+        send_response(current_user->control_socket, "550 Failed to delete file.");
+    }
+}
+
 void process_command(char* buffer, struct user* current_user) {
     puts(buffer);
     const char* command_str = strtok(buffer, " \r\n");
@@ -587,14 +659,29 @@ void process_command(char* buffer, struct user* current_user) {
         case PORT:
             run_port(current_user, argument);
             break;
+		case PASV:
+            run_pasv(current_user, argument);
+            break;
         case NLST:
             run_nlst(current_user, argument);
             break;
 		case LIST:
             run_list(current_user, argument);
             break;
+		case STOR:
+            run_stor(current_user, argument);
+            break;
+		case UPLOAD:
+            run_upload(current_user, argument);
+            break;
         case RETR:
             run_retr(current_user, argument);
+            break;
+		case GET:
+            run_get(current_user, argument);
+            break;
+		case DELE:
+            run_dele(current_user, argument);
             break;
 		case CWD:
             run_cwd(current_user, argument);
