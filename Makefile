@@ -4,7 +4,7 @@ FINAL_BIN := ftp_server
 BUILD_DIR := ./build
 INCLUDE_DIR := ./include
 SRC_DIR := ./src
-SRC := $(SRC_DIR)/FtpUp.c $(SRC_DIR)/utils.c
+SRC := $(SRC_DIR)/FtpUp.c $(SRC_DIR)/command.c $(SRC_DIR)/utils.c
 
 $(BUILD_DIR)/$(FINAL_BIN): $(BUILD_DIR) $(SRC)
 	$(CC) -I$(INCLUDE_DIR) $(CFLAGS) -o $@ $(SRC)
