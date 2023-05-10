@@ -120,8 +120,7 @@ char* format_time(time_t mtime) {
     char *time_str = (char*)malloc(20 * sizeof(char));
     if (time_str == NULL) {
         return NULL;
-    }
-    struct tm *ltm = localtime(&mtime);
+    } struct tm *ltm = localtime(&mtime);
     strftime(time_str, 20, "%b %d %H:%M", ltm);
     return time_str;
 }
@@ -140,4 +139,48 @@ void get_absolute_path(char* relative_path, char* absolute_path, char* current_d
             snprintf(absolute_path, BUFFER_SIZE, "%s/%s", current_directory, relative_path);
         }
     }
+}
+
+size_t get_cpu_count(void) {
+    return sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+int parse_config_file(Config* config) {
+	FILE *fp = fopen("config.conf", "r");
+    if (fp == NULL) {
+        perror("Error opening config file");
+        return 1;
+    }
+	char line[256];
+    char key[256];
+    char value[256];
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "%[^=]=%s", key, value) != 2) {
+            fprintf(stderr, "Error parsing line: %s", line);
+            fclose(fp);
+            return 1;
+        }
+		if (strcmp(key, "command_port") == 0) {
+            config->command_port = atoi(value);
+        } else if (strcmp(key, "username") == 0) {
+            strcpy(config->username, value);
+        } else if (strcmp(key, "password") == 0) {
+            strcpy(config->password, value);
+        } else if (strcmp(key, "timeout") == 0) {
+            config->timeout = atoi(value);
+        } else if (strcmp(key, "thread_count") == 0) {
+            config->thread_count = atoi(value);
+        } else if (strcmp(key, "server_directory") == 0) {
+            strcpy(config->server_directory, value);
+        } else if (strcmp(key, "tar_command_path") == 0) {
+            strcpy(config->tar_command_path, value);
+        }
+    }
+	if (ferror(fp)) {
+        perror("Error reading config file");
+        fclose(fp);
+        return 1;
+    }
+    fclose(fp);
+    return 0;
 }

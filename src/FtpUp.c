@@ -20,7 +20,7 @@ Config config = {0, "", "", 0, 0, "", ""}; // Инициализируем ст�
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 int shared_data = 0;
-int running = 1;
+bool running = true;
 
 void *handle_client(void *arg) {
     int client_socket = *(int *) arg;
@@ -49,48 +49,9 @@ void *handle_client(void *arg) {
 }
 
 int main() {
-	FILE *fp = fopen("config.conf", "r");
-    if (fp == NULL) {
-        perror("Error opening config file");
-        return 1;
+    if (parse_config_file(&config) != 0) {
+        return -1;
     }
-	
-	char line[256];
-    char key[256];
-    char value[256];
-	
-    while (fgets(line, sizeof(line), fp)) {
-        if (sscanf(line, "%[^=]=%s", key, value) != 2) {
-            fprintf(stderr, "Error parsing line: %s", line);
-            fclose(fp);
-            return 1;
-        }
-		
-		if (strcmp(key, "command_port") == 0) {
-            config.command_port = atoi(value);
-        } else if (strcmp(key, "username") == 0) {
-            strcpy(config.username, value);
-        } else if (strcmp(key, "password") == 0) {
-            strcpy(config.password, value);
-        } else if (strcmp(key, "timeout") == 0) {
-            config.timeout = atoi(value);
-        } else if (strcmp(key, "thread_count") == 0) {
-            config.thread_count = atoi(value);
-        } else if (strcmp(key, "server_directory") == 0) {
-            strcpy(config.server_directory, value);
-        } else if (strcmp(key, "tar_command_path") == 0) {
-            strcpy(config.tar_command_path, value);
-        }
-    }
-	
-	if (ferror(fp)) {
-        perror("Error reading config file");
-        fclose(fp);
-        return 1;
-    }
-	
-    fclose(fp);
-	
     // Создание сокета для прослушивания входящих соединений
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     // Установка сокета на переиспользование порта
@@ -106,7 +67,7 @@ int main() {
 
     // Связывание сокета с адресом и портом
     if (bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address)) == 0) {
-    printf("FTP server is ready\r\n");
+        printf("FTP server is ready\r\n");
 	} else {
 		perror("Socket binding error with address and port");
 		exit(EXIT_FAILURE);

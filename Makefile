@@ -1,4 +1,4 @@
-CFLAGS := -std=c17 -Wall -Wextra -pedantic -Wfatal-errors -Werror
+CFLAGS := -std=c17 -lpthread -Wall -Wextra -pedantic -Wfatal-errors -Werror
 CC := gcc
 FINAL_BIN := ftp_server
 BUILD_DIR := ./build
