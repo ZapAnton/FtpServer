@@ -29,3 +29,5 @@ void transfer_dir(const struct user* current_user, const int data_socket, char* 
 char* format_perms(mode_t mode);
 
 char* format_time(time_t mtime);
+
+void get_absolute_path(char* relative_path, char* absolute_path, char* current_directory);

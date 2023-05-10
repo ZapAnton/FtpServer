@@ -125,3 +125,19 @@ char* format_time(time_t mtime) {
     strftime(time_str, 20, "%b %d %H:%M", ltm);
     return time_str;
 }
+
+void get_absolute_path(char* relative_path, char* absolute_path, char* current_directory) {
+    if (relative_path[0] == '/') {
+        // Абсолютный путь уже указан
+        strncpy(absolute_path, relative_path, BUFFER_SIZE);
+    } else {
+        // Указан относительный путь, поэтому нужно добавить его в текущий каталог
+        if (current_directory[strlen(current_directory) - 1] == '/') {
+            // Текущий каталог уже заканчивается косой чертой, поэтому не нужно его добавлять
+            snprintf(absolute_path, BUFFER_SIZE, "%s%s", current_directory, relative_path);
+        } else {
+            // Текущий каталог не заканчивается косой чертой, поэтому нужно добавить его
+            snprintf(absolute_path, BUFFER_SIZE, "%s/%s", current_directory, relative_path);
+        }
+    }
+}

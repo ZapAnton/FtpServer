@@ -1,11 +1,29 @@
 #pragma once
 #include <stdio.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <dirent.h>
 #include "user.h"
 #include "utils.h"
 #include "config.h"
+#include "commands/help.h"
+#include "commands/quit.h"
+#include "commands/user.h"
+#include "commands/pass.h"
+#include "commands/port.h"
+#include "commands/pasv.h"
+#include "commands/nlst.h"
+#include "commands/retr.h"
+#include "commands/get.h"
+#include "commands/list.h"
+#include "commands/cwd.h"
+#include "commands/pwd.h"
+#include "commands/mkd.h"
+#include "commands/rmd.h"
+#include "commands/abor.h"
+#include "commands/stor.h"
+#include "commands/upload.h"
+#include "commands/dele.h"
+#include "commands/rnfr.h"
+#include "commands/rnto.h"
 
 enum Command {
     NOOP,
