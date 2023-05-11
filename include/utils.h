@@ -31,3 +31,7 @@ char* format_perms(mode_t mode);
 char* format_time(time_t mtime);
 
 void get_absolute_path(char* relative_path, char* absolute_path, char* current_directory);
+
+int parse_config_file(Config* config);
+
+size_t get_cpu_count(void);

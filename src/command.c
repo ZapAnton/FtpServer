@@ -50,7 +50,7 @@ enum Command command_str_to_enum(const char* const command_str) {
     return command;
 }
 
-void process_command(char* buffer, struct user* current_user, const Config* config) {
+int process_command(char* buffer, struct user* current_user, const Config* config) {
     puts(buffer);
     const char* command_str = strtok(buffer, " \r\n");
     char* argument = strtok(NULL, " \r\n");
@@ -58,7 +58,7 @@ void process_command(char* buffer, struct user* current_user, const Config* conf
     switch (command) {
         case QUIT:
             run_quit(current_user);
-            break;
+            return -1;
 		case PWD:
             run_pwd(current_user);
             break;
@@ -129,4 +129,5 @@ void process_command(char* buffer, struct user* current_user, const Config* conf
             send_response(current_user->control_socket, "500 Syntax error, command unrecognized.\r\n");
             break;
     }
+    return 0;
 }
