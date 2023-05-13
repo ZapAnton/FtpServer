@@ -13,7 +13,7 @@ struct user {
 	int client_data_socket;
     struct sockaddr_in data_address;
     enum DataConnectionType data_connection_type;
-	char* current_directory;
+	char current_directory[BUFFER_SIZE];
 	bool is_aborted;
 	char rnfr_name[BUFFER_SIZE];
 };

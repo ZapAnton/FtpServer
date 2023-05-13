@@ -1,10 +1,11 @@
 #pragma once
+#include "consts.h"
 
 struct Config {
 	int command_port;
-    char username[256];
-    char password[256];
+    char username[MAX_USERNAME_LENGTH];
+    char password[MAX_PASSWORD_LENGTH];
     int timeout;
-	char server_directory[256];
-	char tar_command_path[256];	
+	char server_directory[BUFFER_SIZE];
+	char tar_command_path[BUFFER_SIZE];	
 };
