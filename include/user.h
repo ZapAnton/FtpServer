@@ -10,6 +10,7 @@ struct user {
     bool authenticated;
     int control_socket;
 	int data_socket;
+	int client_data_socket;
     struct sockaddr_in data_address;
     enum DataConnectionType data_connection_type;
 	char* current_directory;

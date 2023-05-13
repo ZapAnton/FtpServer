@@ -9,15 +9,21 @@ void send_response(int client_socket, const char* response) {
     }
 }
 
-int establish_data_connection(struct user* current_user, int* data_socket) {
-    *data_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (connect(*data_socket, (struct sockaddr*)&(current_user->data_address), sizeof(current_user->data_address)) < 0) {
-        send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
-        return -1;
+int establish_data_connection(struct user* current_user) {
+    if (current_user->data_connection_type == ACTIVE) {
+        current_user->data_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (connect(current_user->data_socket, (struct sockaddr*)&(current_user->data_address), sizeof(current_user->data_address)) < 0) {
+            send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
+            return -1;
+        }
+    } else {
+        socklen_t data_address_length = sizeof(current_user->data_address);
+        current_user->client_data_socket = accept(current_user->data_socket, (struct sockaddr*) &current_user->data_address, &data_address_length);
+        if (current_user->client_data_socket < 0) {
+            send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
+            return -1;
+        }
     }
-	
-	current_user->data_socket = *data_socket;
-	
     return 0;
 }
 
