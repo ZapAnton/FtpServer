@@ -90,6 +90,9 @@ int main() {
         return -1;
     }
     thread_count = get_cpu_count() - 1;
+    if (thread_count < 1) {
+        thread_count = 1;
+    }
     printf("Using %d threads for handling incoming client connections.\n", thread_count);
     // Создание сокета для прослушивания входящих соединений
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
