@@ -85,7 +85,6 @@ void create_worker_thread(int* client_socket) {
 }
 
 int main() {
-    signal(SIGPIPE, SIG_IGN);
     puts("Starting FTP server.");
     if (parse_config_file(&config) != 0) {
         return -1;
