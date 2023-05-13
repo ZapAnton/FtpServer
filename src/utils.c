@@ -80,7 +80,7 @@ void transfer_file(const struct user* current_user, const int data_socket, const
     send_response(current_user->control_socket, "226 Transfer complete.\r\n");
 }
 
-void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const Config* config) {
+void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const struct Config* config) {
     if (!file_exists(config->tar_command_path)) {
         fprintf(stderr, "'tar' command not found");
         send_response(current_user->control_socket, "550 tar command unavailable.\r\n");
@@ -165,7 +165,7 @@ size_t get_cpu_count(void) {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-int parse_config_file(Config* config) {
+int parse_config_file(struct Config* config) {
 	FILE *fp = fopen("config.conf", "r");
     if (fp == NULL) {
         perror("Error opening config file");

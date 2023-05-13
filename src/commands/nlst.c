@@ -1,6 +1,6 @@
 #include "commands/nlst.h"
 
-void run_nlst(struct user* current_user, const char* const argument, const Config* config) {    
+void run_nlst(struct user* current_user, const char* const argument, const struct Config* config) {    
     if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;

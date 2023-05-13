@@ -53,4 +53,4 @@ enum Command {
 
 enum Command command_str_to_enum(const char* const command_str);
 
-int process_command(char* buffer, struct user* current_user, const Config* config);
+int process_command(char* buffer, struct user* current_user, const struct Config* config);

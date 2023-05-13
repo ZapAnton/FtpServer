@@ -1,6 +1,6 @@
 #include "commands/list.h"
 
-void run_list(struct user* const current_user, const char* const argument, const Config* config) {    
+void run_list(struct user* const current_user, const char* const argument, const struct Config* config) {    
     if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;

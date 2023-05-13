@@ -16,7 +16,7 @@
 #include "config.h"
 #include "command.h"
 
-Config config = {0, "", "", 0, 0, "", ""}; // Инициализируем структуру
+struct Config config = {0, "", "", 0, 0, "", ""}; // Инициализируем структуру
 
 int thread_count = 1;
 bool running = true;
