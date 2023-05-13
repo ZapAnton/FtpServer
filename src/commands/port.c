@@ -1,4 +1,5 @@
 #include "commands/port.h"
+#include "data_connection.h"
 
 void run_port(struct user* const current_user, char* const argument) {
     if (!current_user->authenticated) {
@@ -23,7 +24,7 @@ void run_port(struct user* const current_user, char* const argument) {
 	data_address.sin_port = htons(data_port);
 	// Сохранение IP-адреса и порта для передачи данных в структуре current_user
 	memcpy(&(current_user->data_address), &data_address, sizeof(data_address));
-	current_user->is_pasv = false;
+	current_user->data_connection_type = ACTIVE;
 	current_user->is_aborted = false;
 	// Отправка клиенту сообщения об успешной установке порта для передачи данных
 	char response[BUFFER_SIZE];

@@ -1,7 +1,8 @@
+#include "data_connection.h"
 #include "commands/pasv.h"
 
-void run_pasv(struct user* const current_user, const char* const argument) {
-	if (!current_user || !argument) {}
+void run_pasv(struct user* const current_user) {
+	if (!current_user) {}
 }
 
 /*void process_pasv_command(int client_socket, struct user* current_user) {

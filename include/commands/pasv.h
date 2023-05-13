@@ -3,4 +3,4 @@
 #include "user.h"
 #include "utils.h"
 
-void run_pasv(struct user* const current_user, const char* const argument);
+void run_pasv(struct user* const current_user);
