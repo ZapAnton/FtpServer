@@ -6,8 +6,8 @@ void run_pwd(const struct user* const current_user) {
         return;
     }
 	
-    char* current_directory = current_user->current_directory;
+   /* char* current_directory = current_user->current_directory;
     char response[BUFFER_SIZE];
     snprintf(response, BUFFER_SIZE, "257 \"%s\"\r\n", current_directory);
-    send_response(current_user->control_socket, response);
+    send_response(current_user->control_socket, response);*/
 }

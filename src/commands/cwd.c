@@ -19,8 +19,6 @@ void run_cwd(struct user* const current_user, char* const argument) {
         send_response(current_user->control_socket, "550 Invalid path\r\n");
         return;
     }
-    // Обновление текущего рабочего каталога
-    free(current_user->current_directory);
-    current_user->current_directory = new_directory;
+    //current_user->current_directory = new_directory;
     send_response(current_user->control_socket, "250 Directory changed\r\n");
 }

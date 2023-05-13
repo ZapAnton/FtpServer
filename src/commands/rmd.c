@@ -5,7 +5,8 @@ void run_rmd(const struct user* const current_user, char* const argument) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
     }
-	
+    if (!argument) {}
+	/*
     char absolute_path[BUFFER_SIZE];
     get_absolute_path(argument, absolute_path, current_user->current_directory);
 
@@ -22,6 +23,7 @@ void run_rmd(const struct user* const current_user, char* const argument) {
     }
 	
     send_response(current_user->data_socket, "250 Requested file action okay, completed.");
+    */
 }
 
 
