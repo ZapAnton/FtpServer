@@ -1,5 +1,7 @@
 #include "utils.h"
 
+static pthread_mutex_t fs_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void send_response(int client_socket, const char* response) {
     int response_len = strlen(response);
     int bytes_sent = send(client_socket, response, response_len, 0);
@@ -28,29 +30,40 @@ int establish_data_connection(struct user* current_user) {
 }
 
 bool is_dir(const char* const path) {
+    bool file_is_dir = false;
+    pthread_mutex_lock(&fs_mutex);
     struct stat statbuf = { 0 };
     if (stat(path, &statbuf) != 0) {
         return false;
     }
-    return S_ISDIR(statbuf.st_mode);
+    file_is_dir = S_ISDIR(statbuf.st_mode);
+    pthread_mutex_unlock(&fs_mutex);
+    return file_is_dir;
 }
 
 bool file_exists(const char* const filepath) {
-    return access(filepath, F_OK) == 0;
+    bool exists = false;
+    pthread_mutex_lock(&fs_mutex);
+    exists = access(filepath, F_OK) == 0;
+    pthread_mutex_unlock(&fs_mutex);
+    return exists;
 }
 
 void make_archive(char* dirpath, char* archive_filepath) {
     const size_t command_length = strlen("tar -czf") + 1 + strlen(archive_filepath) + 1 + strlen("-C") + 1 + strlen(dirpath) + 1 + strlen(".");
     char* command = calloc(command_length + 1, sizeof(char));
     snprintf(command, command_length + 1, "tar -czf %s -C %s .", archive_filepath, dirpath);
+    pthread_mutex_lock(&fs_mutex);
     const int status = system(command);
-    free(command);
+    pthread_mutex_unlock(&fs_mutex);
     if (status != 0) {
         fprintf(stderr, "Archive error: %s\n", strerror(errno));
     }
+    free(command);
 }
 
 void transfer_file(const struct user* current_user, const int data_socket, const char* const filepath) {
+    pthread_mutex_lock(&fs_mutex);
     FILE* file = fopen(filepath, "rb");
     if (file == NULL) {
         fprintf(stderr, "Failed to open file at %s\n", filepath);
@@ -62,11 +75,12 @@ void transfer_file(const struct user* current_user, const int data_socket, const
     while((bytes_read = fread(send_buffer, sizeof(char), sizeof(send_buffer), file)) > 0){
         send(data_socket, send_buffer, bytes_read, 0);
     }
-    send_response(current_user->control_socket, "226 Transfer complete.\r\n");
     fclose(file);
+    pthread_mutex_unlock(&fs_mutex);
+    send_response(current_user->control_socket, "226 Transfer complete.\r\n");
 }
 
-void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const Config* config) {
+void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const struct Config* config) {
     if (!file_exists(config->tar_command_path)) {
         fprintf(stderr, "'tar' command not found");
         send_response(current_user->control_socket, "550 tar command unavailable.\r\n");
@@ -151,7 +165,7 @@ size_t get_cpu_count(void) {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-int parse_config_file(Config* config) {
+int parse_config_file(struct Config* config) {
 	FILE *fp = fopen("config.conf", "r");
     if (fp == NULL) {
         perror("Error opening config file");
