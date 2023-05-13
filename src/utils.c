@@ -188,8 +188,6 @@ int parse_config_file(struct Config* config) {
             strcpy(config->password, value);
         } else if (strcmp(key, "timeout") == 0) {
             config->timeout = atoi(value);
-        } else if (strcmp(key, "thread_count") == 0) {
-            config->thread_count = atoi(value);
         } else if (strcmp(key, "server_directory") == 0) {
             strcpy(config->server_directory, value);
         } else if (strcmp(key, "tar_command_path") == 0) {

@@ -5,7 +5,6 @@ struct Config {
     char username[256];
     char password[256];
     int timeout;
-	int thread_count;
 	char server_directory[256];
 	char tar_command_path[256];	
 };
