@@ -24,6 +24,7 @@ void run_pasv(struct user* const current_user) {
     getsockname(data_socket, (struct sockaddr*)&server_address, &server_address_length);
     unsigned int data_port = ntohs(server_address.sin_port);
     // Сохранение адреса и порта для передачи данных в структуре current_user
+    current_user->data_socket = data_socket;
     memcpy(&(current_user->data_address), &server_address, sizeof(server_address));
     // Отправка клиенту сообщения с IP-адресом и портом для соединения
     char response[BUFFER_SIZE];
