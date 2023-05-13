@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <pthread.h>
 #include "user.h"
 #include "config.h"
 
