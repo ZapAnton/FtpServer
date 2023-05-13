@@ -1,6 +1,10 @@
 #include "commands/pasv.h"
 
 void run_pasv(struct user* const current_user) {
+    if (!current_user->authenticated) {
+        send_response(current_user->control_socket, "530 Not logged in.\r\n");
+        return;
+    }
     // Получение адреса сервера и порта, на котором будет прослушиваться соединение для передачи данных
     struct sockaddr_in server_address;
     memset(&server_address, 0, sizeof(server_address));
