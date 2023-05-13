@@ -8,4 +8,5 @@ struct Config {
     int timeout;
 	char server_directory[BUFFER_SIZE];
 	char tar_command_path[BUFFER_SIZE];	
+	char bz2_command_path[BUFFER_SIZE];	
 };

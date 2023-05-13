@@ -2,6 +2,12 @@
 
 static pthread_mutex_t fs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+bool str_ends_with(const char* str, const char* suffix) {
+    const size_t str_len = strlen(str);
+    const size_t suffix_len = strlen(suffix);
+    return suffix_len <= str_len && strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
 void send_response(int client_socket, const char* response) {
     int response_len = strlen(response);
     int bytes_sent = send(client_socket, response, response_len, 0);
@@ -49,10 +55,11 @@ bool file_exists(const char* const filepath) {
     return exists;
 }
 
-void make_archive(char* dirpath, char* archive_filepath) {
+void make_archive(char* dirpath, char* archive_filepath, const enum CompressorType compressor_type) {
     const size_t command_length = strlen("tar -czf") + 1 + strlen(archive_filepath) + 1 + strlen("-C") + 1 + strlen(dirpath) + 1 + strlen(".");
     char* command = calloc(command_length + 1, sizeof(char));
-    snprintf(command, command_length + 1, "tar -czf %s -C %s .", archive_filepath, dirpath);
+    const char compressor_flag = (compressor_type == GZIP) ? 'z' : 'j';
+    snprintf(command, command_length + 1, "tar -c%cf %s -C %s .", compressor_flag, archive_filepath, dirpath);
     pthread_mutex_lock(&fs_mutex);
     const int status = system(command);
     pthread_mutex_unlock(&fs_mutex);
@@ -80,18 +87,22 @@ void transfer_file(const struct user* current_user, const int data_socket, const
     send_response(current_user->control_socket, "226 Transfer complete.\r\n");
 }
 
-void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const struct Config* config) {
-    if (!file_exists(config->tar_command_path)) {
-        fprintf(stderr, "'tar' command not found");
+void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const enum CompressorType compressor_type, const struct Config* config) {
+    if (compressor_type == GZIP && !file_exists(config->tar_command_path)) {
+        fprintf(stderr, "%s command not found", config->tar_command_path);
         send_response(current_user->control_socket, "550 tar command unavailable.\r\n");
         return;
+    } else if (compressor_type == BZIP2 && !file_exists(config->tar_command_path)) {
+        fprintf(stderr, "%s command not found", config->bz2_command_path);
+        send_response(current_user->control_socket, "550 bzip2 command unavailable.\r\n");
+        return;
     }
-    const char* archive_extension = ".tar.gz";
+    const char* archive_extension = (compressor_type == GZIP) ? ".tar.gz" : ".bz2";
     const size_t archive_filepath_length = strlen(dirpath) + strlen(archive_extension);
     char* archive_filepath = calloc(archive_filepath_length + 1, sizeof(char));
     snprintf(archive_filepath, archive_filepath_length + 1, "%s%s", dirpath, archive_extension);
     if (!file_exists(archive_filepath)) {
-        make_archive(dirpath, archive_filepath);
+        make_archive(dirpath, archive_filepath, compressor_type);
     }
     transfer_file(current_user, data_socket, archive_filepath);
     free(archive_filepath);
@@ -192,6 +203,8 @@ int parse_config_file(struct Config* config) {
             strcpy(config->server_directory, value);
         } else if (strcmp(key, "tar_command_path") == 0) {
             strcpy(config->tar_command_path, value);
+        } else if (strcmp(key, "bz2_command_path") == 0) {
+            strcpy(config->bz2_command_path, value);
         }
     }
 	if (ferror(fp)) {
