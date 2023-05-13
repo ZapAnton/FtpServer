@@ -11,5 +11,5 @@ void run_abor(struct user* const current_user) {
         current_user->data_socket = -1;
     }
     current_user->is_aborted = 1;
-    send_response(current_user->control_socket, "226 Abort successful");
+    send_response(current_user->control_socket, "226 Abort successful.\r\n");
 }
