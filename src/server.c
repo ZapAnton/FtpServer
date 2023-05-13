@@ -54,6 +54,7 @@ void *handle_client(void *arg) {
     struct user current_user = { 0 };
     current_user.data_connection_type = ACTIVE;
     current_user.control_socket = client_socket;
+	current_user->current_directory = config.server_directory;
 	while (true) {
 		int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
 		if (bytes_received <= 0) {
