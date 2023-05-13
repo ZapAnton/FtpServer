@@ -182,9 +182,9 @@ int parse_config_file(struct Config* config) {
         perror("Error opening config file");
         return 1;
     }
-	char line[256];
-    char key[256];
-    char value[256];
+	char line[PARAM_SIZE];
+    char key[PARAM_SIZE];
+    char value[PARAM_SIZE];
     while (fgets(line, sizeof(line), fp)) {
         if (sscanf(line, "%[^=]=%s", key, value) != 2) {
             fprintf(stderr, "Error parsing line: %s", line);

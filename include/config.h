@@ -6,7 +6,7 @@ struct Config {
     char username[MAX_USERNAME_LENGTH];
     char password[MAX_PASSWORD_LENGTH];
     int timeout;
-	char server_directory[BUFFER_SIZE];
-	char tar_command_path[BUFFER_SIZE];	
-	char bz2_command_path[BUFFER_SIZE];	
+	char server_directory[PARAM_SIZE];
+	char tar_command_path[PARAM_SIZE];	
+	char bz2_command_path[PARAM_SIZE];	
 };
