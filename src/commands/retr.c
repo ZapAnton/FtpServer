@@ -17,7 +17,7 @@ void run_retr(struct user* current_user, const char* const filepath, const Confi
     }*/
 	
     int data_socket = 0;
-    if (establish_data_connection(current_user, &data_socket) == -1) {
+    if (establish_data_connection(current_user) == -1) {
         return;
     }
     size_t filepath_length = strlen(config->server_directory) + 1 + strlen(filepath);

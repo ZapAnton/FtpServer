@@ -52,6 +52,7 @@ void *handle_client(void *arg) {
 	// Чтение и обработка команд от клиента
     char buffer[BUFFER_SIZE] = { '\0' };
     struct user current_user = { 0 };
+    current_user.data_connection_type = ACTIVE;
     current_user.control_socket = client_socket;
 	while (true) {
 		int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
@@ -85,12 +86,14 @@ void create_worker_thread(int* client_socket) {
 }
 
 int main() {
-    signal(SIGPIPE, SIG_IGN);
     puts("Starting FTP server.");
     if (parse_config_file(&config) != 0) {
         return -1;
     }
     thread_count = get_cpu_count() - 1;
+    if (thread_count < 1) {
+        thread_count = 1;
+    }
     printf("Using %d threads for handling incoming client connections.\n", thread_count);
     // Создание сокета для прослушивания входящих соединений
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);

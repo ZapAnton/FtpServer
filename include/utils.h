@@ -13,7 +13,7 @@
 
 void send_response(int client_socket, const char* response);
 
-int establish_data_connection(struct user* current_user, int* data_socket);
+int establish_data_connection(struct user* current_user);
 
 bool is_dir(const char* const path);
 

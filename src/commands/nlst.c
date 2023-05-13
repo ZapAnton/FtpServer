@@ -5,8 +5,7 @@ void run_nlst(struct user* current_user, const char* const argument, const Confi
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
     }
-    int data_socket = 0;
-    if (establish_data_connection(current_user, &data_socket) == -1) {
+    if (establish_data_connection(current_user) == -1) {
         return;
     }
     // Отправка клиенту сообщения о начале передачи списка файлов
@@ -24,16 +23,17 @@ void run_nlst(struct user* current_user, const char* const argument, const Confi
         snprintf(directory_path, directory_path_length + 1, "%s", config->server_directory);
     }
     DIR* directory = opendir(directory_path);
-    struct dirent* entry;
+    struct dirent* entry = NULL;
     char buffer[BUFFER_SIZE];
+    const int client_socket = (current_user->data_connection_type == ACTIVE) ? current_user->data_socket : current_user->client_data_socket;
     while ((entry = readdir(directory)) != NULL) {
         snprintf(buffer, BUFFER_SIZE, "%s\r\n", entry->d_name);
-        send(data_socket, buffer, strlen(buffer), 0);
+        send(client_socket, buffer, strlen(buffer), 0);
     }
     closedir(directory);
     free(directory_path);
 
     // Закрытие соединения для передачи данных
-    close(data_socket);
+    close(client_socket);
     send_response(current_user->control_socket, "226 Transfer complete.\r\n");
 }

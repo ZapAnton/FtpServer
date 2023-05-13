@@ -78,7 +78,7 @@ int process_command(char* buffer, struct user* current_user, const Config* confi
             run_port(current_user, argument);
             break;
 		case PASV:
-            run_pasv(current_user, argument);
+            run_pasv(current_user);
             break;
         case NLST:
             run_nlst(current_user, argument, config);

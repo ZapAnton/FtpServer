@@ -6,7 +6,7 @@ void run_list(struct user* const current_user, const char* const argument, const
         return;
     }
     int data_socket = 0;
-    if (establish_data_connection(current_user, &data_socket) == -1) {
+    if (establish_data_connection(current_user) == -1) {
         return;
     }
     // Отправка клиенту сообщения о начале передачи списка файлов
