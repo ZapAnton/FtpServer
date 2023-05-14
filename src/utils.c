@@ -133,7 +133,7 @@ void transfer_dir(const struct user* current_user, const int data_socket, char* 
 }
 
 char* format_perms(mode_t mode) {
-    char *perms = (char*)malloc(10 * sizeof(char));
+    char *perms = calloc(11, sizeof(char));
     if (perms == NULL) {
         return NULL;
     }
@@ -172,11 +172,13 @@ char* format_perms(mode_t mode) {
 }
 
 char* format_time(time_t mtime) {
-    char *time_str = (char*)malloc(20 * sizeof(char));
+    const size_t time_str_length = 21;
+    char* time_str = calloc(time_str_length, sizeof(char));
     if (time_str == NULL) {
         return NULL;
-    } struct tm *ltm = localtime(&mtime);
-    strftime(time_str, 20, "%b %d %H:%M", ltm);
+    } 
+    struct tm *ltm = localtime(&mtime);
+    strftime(time_str, time_str_length, "%b %d %H:%M", ltm);
     return time_str;
 }
 
