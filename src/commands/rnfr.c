@@ -11,14 +11,13 @@ void run_rnfr(struct user* const current_user, const char* const argument) {
         return;
 	}
 	
-    char filename[PARAM_SIZE];	
-	const size_t filename_length = PARAM_SIZE;
-    snprintf(filename, filename_length, "%s/%s", current_user->current_directory, argument);
+    char filename[BUFFER_SIZE] = { '\0' };	
+    sprintf(filename, "%s/%s", current_user->current_directory, argument);
     if (!file_exists(filename)) {
         send_response(current_user->control_socket, "550 File or directory not found.\r\n");
         return;
     }
-    strncpy(current_user->rnfr_name, argument, filename_length);
+    strcpy(current_user->rnfr_name, filename);
     send_response(current_user->control_socket, "350 RNFR accepted - file exists, ready for destination.\r\n");    
 }
 

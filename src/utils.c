@@ -246,3 +246,12 @@ int parse_config_file(struct Config* config) {
     fclose(fp);
     return 0;
 }
+
+
+int rename_mutex(const char* old_name, const char* new_name) {
+    int status = -1;
+	pthread_mutex_lock(&fs_mutex);
+    status = rename(old_name, new_name);
+	pthread_mutex_unlock(&fs_mutex);
+    return status;
+}

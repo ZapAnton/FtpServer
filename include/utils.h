@@ -52,3 +52,5 @@ int parse_config_file(struct Config* config);
 size_t get_cpu_count(void);
 
 bool str_ends_with(const char* str, const char* suffix);
+
+int rename_mutex(const char* old_name, const char* new_name);
