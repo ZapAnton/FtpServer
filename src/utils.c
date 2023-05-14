@@ -69,6 +69,27 @@ void make_archive(char* dirpath, char* archive_filepath, const enum CompressorTy
     free(command);
 }
 
+void save_file(const struct user* current_user, const int data_socket, const char* const filepath) {
+    pthread_mutex_lock(&fs_mutex);
+    FILE *file = fopen(filepath, "wb");
+    if (file == NULL) {
+        send_response(current_user->control_socket, "550 Failed to open file.\r\n");
+        return;
+    }
+    size_t n = 0;
+    char buf[BUFFER_SIZE] = { 0 };
+    while ((n = recv(data_socket, buf, BUFFER_SIZE, 0)) > 0) {
+        if (fwrite(buf, sizeof(char), n, file) != n) {
+            send_response(current_user->control_socket, "550 Failed to write file.\r\n");
+            fclose(file);
+            return;
+        }
+    }
+    fclose(file);
+    pthread_mutex_unlock(&fs_mutex);
+    send_response(current_user->control_socket, "226 Transfer complete.\r\n");
+}
+
 void transfer_file(const struct user* current_user, const int data_socket, const char* const filepath) {
     pthread_mutex_lock(&fs_mutex);
     FILE* file = fopen(filepath, "rb");

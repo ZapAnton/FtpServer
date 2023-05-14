@@ -30,6 +30,8 @@ void make_archive(char* dirpath, char* archive_filepath, enum CompressorType com
 
 void transfer_file(const struct user* current_user, const int data_socket, const char* const filepath);
 
+void save_file(const struct user* current_user, const int data_socket, const char* const filepath);
+
 void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, enum CompressorType compressor_type, const struct Config* config);
 
 char* format_perms(mode_t mode);
