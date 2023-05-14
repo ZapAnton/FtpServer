@@ -22,6 +22,8 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = NLST;
 	} else if (strcmp(command_str, "LIST") == 0) {
         command = LIST;
+	} else if (strcmp(command_str, "TYPE") == 0) {
+        command = TYPE;
 	} else if (strcmp(command_str, "STOR") == 0) {
         command = STOR;
     } else if (strcmp(command_str, "RETR") == 0) {
@@ -41,9 +43,7 @@ enum Command command_str_to_enum(const char* const command_str) {
 	} else if (strcmp(command_str, "RMD") == 0) {
         command = RMD;	
 	} else if (strcmp(command_str, "ABOR") == 0) {
-        command = ABOR;
-	} else if (strcmp(command_str, "TYPE") == 0) {
-        command = TYPE;
+        command = ABOR;	
 	}
     return command;
 }
@@ -84,6 +84,9 @@ int process_command(char* buffer, struct user* current_user, const struct Config
 		case LIST:
             run_list(current_user, argument, config);
             break;
+		case TYPE:
+            run_type(current_user, argument);
+            break;	
 		case STOR:
             run_stor(current_user, argument);
             break;
@@ -113,10 +116,7 @@ int process_command(char* buffer, struct user* current_user, const struct Config
             break;
 		case ABOR:
             run_abor(current_user);
-            break;
-		case TYPE:
-            run_type(current_user, argument);
-            break;
+            break;		
         case UNKNOWN:
             send_response(current_user->control_socket, "502 Command not implemented.\r\n");
             break;

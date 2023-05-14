@@ -21,8 +21,8 @@
 #include "commands/rnfr.h"
 #include "commands/rnto.h"
 #include "commands/stor.h"
-#include "commands/user.h"
 #include "commands/type.h"
+#include "commands/user.h"
 
 enum Command {
     ABOR, //1-Отменить передачу
@@ -44,8 +44,8 @@ enum Command {
 	RNTO, //17-Переименовать файл
 	STOR, //18-Загрузить файл на сервер
 	SYST, //19-Получить информацию о типа ОС на сервере
-    USER, //20-Логин
-    TYPE,
+	TYPE, //20-Установить тип передачи
+    USER, //21-Логин    
     UNKNOWN,
 };
 

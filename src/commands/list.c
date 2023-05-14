@@ -25,7 +25,7 @@ void run_list(struct user* const current_user, const char* const argument, const
     }
     DIR* directory = opendir(directory_path);
 	if (directory == NULL) {
-		send_response(current_user->control_socket, "550 Failed to open directory.");
+		send_response(current_user->control_socket, "550 Failed to open directory\r\n.");
 		return;
 	}
     struct dirent* entry;
@@ -37,7 +37,7 @@ void run_list(struct user* const current_user, const char* const argument, const
 		sprintf(buffer, "%s/%s", directory_path, entry->d_name);
 		struct stat info;
 		if (stat(buffer, &info) == -1) {
-			send_response(current_user->control_socket, "550 Failed to get file information.");
+			send_response(current_user->control_socket, "550 Failed to get file information.\r\n");
 			closedir(directory);
 			return;
 		}
