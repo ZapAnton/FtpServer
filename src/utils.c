@@ -201,7 +201,7 @@ int parse_config_file(struct Config* config) {
             config->timeout = atoi(value);
         } else if (strcmp(key, "server_directory") == 0) {
 			if (!file_exists(value)) {
-				fprintf(stderr, "Error parsing line: %s", line);
+				fprintf(stderr, "Error parsing line: %sDirectory '%s' does not exist.\n", line, value);
 				fclose(fp);
 				return 1;
 			}
