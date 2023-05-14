@@ -55,11 +55,14 @@ bool file_exists(const char* const filepath) {
     return exists;
 }
 
-void make_archive(char* dirpath, char* archive_filepath, const enum CompressorType compressor_type) {
+void make_archive_operation(char* dirpath, char* archive_filepath, const enum CompressorType compressor_type, enum ArchiveOperation archive_operation) {
     const size_t command_length = strlen("tar -czf") + 1 + strlen(archive_filepath) + 1 + strlen("-C") + 1 + strlen(dirpath) + 1 + strlen(".");
     char* command = calloc(command_length + 1, sizeof(char));
     const char compressor_flag = (compressor_type == GZIP) ? 'z' : 'j';
-    snprintf(command, command_length + 1, "tar -c%cf %s -C %s .", compressor_flag, archive_filepath, dirpath);
+    const char operation_flag = (archive_operation == CREATE) ? 'c' : 'x';
+    const char extra_char = (archive_operation == CREATE) ? '.' : ' ';
+    snprintf(command, command_length + 1, "tar -%c%cf %s -C %s %c", operation_flag, compressor_flag, archive_filepath, dirpath, extra_char);
+    puts(command);
     pthread_mutex_lock(&fs_mutex);
     const int status = system(command);
     pthread_mutex_unlock(&fs_mutex);
@@ -123,7 +126,7 @@ void transfer_dir(const struct user* current_user, const int data_socket, char* 
     char* archive_filepath = calloc(archive_filepath_length + 1, sizeof(char));
     snprintf(archive_filepath, archive_filepath_length + 1, "%s%s", dirpath, archive_extension);
     if (!file_exists(archive_filepath)) {
-        make_archive(dirpath, archive_filepath, compressor_type);
+        make_archive_operation(dirpath, archive_filepath, compressor_type, CREATE);
     }
     transfer_file(current_user, data_socket, archive_filepath);
     free(archive_filepath);
