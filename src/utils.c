@@ -116,7 +116,7 @@ void transfer_dir(const struct user* current_user, const int data_socket, char* 
         fprintf(stderr, "%s command not found", config->tar_command_path);
         send_response(current_user->control_socket, "550 tar command unavailable.\r\n");
         return;
-    } else if (compressor_type == BZIP2 && !file_exists(config->tar_command_path)) {
+    } else if (compressor_type == BZIP2 && !file_exists(config->bz2_command_path)) {
         fprintf(stderr, "%s command not found", config->bz2_command_path);
         send_response(current_user->control_socket, "550 bzip2 command unavailable.\r\n");
         return;
