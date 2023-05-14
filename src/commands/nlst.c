@@ -1,6 +1,6 @@
 #include "commands/nlst.h"
 
-void run_nlst(struct user* current_user, const char* const argument, const struct Config* config) {    
+void run_nlst(struct user* current_user, const char* const argument) {    
     if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
@@ -12,15 +12,15 @@ void run_nlst(struct user* current_user, const char* const argument, const struc
     send_response(current_user->control_socket, "150 Opening ASCII mode data connection for entry list\r\n");
 
     // Получение списка файлов
-    size_t directory_path_length = strlen(config->server_directory);
+    size_t directory_path_length = strlen(current_user->current_directory);
     if (argument) {
         directory_path_length += strlen(argument) + 1;
     }
     char* directory_path = calloc(directory_path_length + 1, sizeof(char));
     if (argument) {
-        snprintf(directory_path, directory_path_length + 1, "%s/%s", config->server_directory, argument);
+        snprintf(directory_path, directory_path_length + 1, "%s/%s", current_user->current_directory, argument);
     } else {
-        snprintf(directory_path, directory_path_length + 1, "%s", config->server_directory);
+        snprintf(directory_path, directory_path_length + 1, "%s", current_user->current_directory);
     }
     DIR* directory = opendir(directory_path);
     struct dirent* entry = NULL;

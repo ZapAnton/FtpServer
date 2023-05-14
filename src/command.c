@@ -79,10 +79,10 @@ int process_command(char* buffer, struct user* current_user, const struct Config
             run_pasv(current_user);
             break;
 		case NLST:
-            run_nlst(current_user, argument, config);
+            run_nlst(current_user, argument);
             break;
 		case LIST:
-            run_list(current_user, argument, config);
+            run_list(current_user, argument);
             break;
 		case STOR:
             run_stor(current_user, argument);
