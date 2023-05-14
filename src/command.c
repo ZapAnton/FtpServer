@@ -42,6 +42,8 @@ enum Command command_str_to_enum(const char* const command_str) {
         command = RMD;	
 	} else if (strcmp(command_str, "ABOR") == 0) {
         command = ABOR;
+	} else if (strcmp(command_str, "TYPE") == 0) {
+        command = TYPE;
 	}
     return command;
 }
@@ -111,6 +113,9 @@ int process_command(char* buffer, struct user* current_user, const struct Config
             break;
 		case ABOR:
             run_abor(current_user);
+            break;
+		case TYPE:
+            run_type(current_user, argument);
             break;
         case UNKNOWN:
             send_response(current_user->control_socket, "502 Command not implemented.\r\n");
