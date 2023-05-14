@@ -101,7 +101,7 @@ int process_command(char* buffer, struct user* current_user, const struct Config
             run_pwd(current_user);
             break;
 		case CWD:
-            run_cwd(current_user, argument);
+            run_cwd(current_user, argument, config);
             break;
 		case MKD:
             run_mkd(current_user, argument);

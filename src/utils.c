@@ -200,6 +200,11 @@ int parse_config_file(struct Config* config) {
         } else if (strcmp(key, "timeout") == 0) {
             config->timeout = atoi(value);
         } else if (strcmp(key, "server_directory") == 0) {
+			if (!file_exists(value)) {
+				fprintf(stderr, "Error parsing line: %s", line);
+				fclose(fp);
+				return 1;
+			}
             strcpy(config->server_directory, value);
         } else if (strcmp(key, "tar_command_path") == 0) {
             strcpy(config->tar_command_path, value);
