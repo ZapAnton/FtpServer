@@ -4,11 +4,9 @@
 #include "user.h"
 #include "utils.h"
 #include <arpa/inet.h>
-#include <dirent.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
