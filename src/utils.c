@@ -249,9 +249,26 @@ int parse_config_file(struct Config* config) {
 
 
 int rename_mutex(const char* old_name, const char* new_name) {
-    int status = -1;
 	pthread_mutex_lock(&fs_mutex);
-    status = rename(old_name, new_name);
+    const int status = rename(old_name, new_name);
 	pthread_mutex_unlock(&fs_mutex);
+    return status;
+}
+
+int mkdir_mutex(const char *pathname, mode_t mode) {
+	pthread_mutex_lock(&fs_mutex);
+    const int status = mkdir(pathname, mode);
+	pthread_mutex_unlock(&fs_mutex);
+    return status;
+}
+
+int rmdir_mutex(const char *pathname) {
+    const size_t command_length = strlen("rm -rf") + 1 + strlen(pathname);
+    char* command = calloc(command_length + 1, sizeof(char));
+    snprintf(command, command_length + 1, "rm -rf %s", pathname);
+	pthread_mutex_lock(&fs_mutex);
+    const int status = system(command);
+	pthread_mutex_unlock(&fs_mutex);
+    free(command);
     return status;
 }

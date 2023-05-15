@@ -54,3 +54,7 @@ size_t get_cpu_count(void);
 bool str_ends_with(const char* str, const char* suffix);
 
 int rename_mutex(const char* old_name, const char* new_name);
+
+int mkdir_mutex(const char *pathname, mode_t mode);
+
+int rmdir_mutex(const char *pathname);
