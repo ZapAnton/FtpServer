@@ -5,7 +5,8 @@ void run_pasv(struct user* const current_user) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
     }
-    // Получение адреса сервера и порта, на котором будет прослушиваться соединение для передачи данных
+    // Получение адреса сервера и порта, на котором будет прослушиваться соединение для передачи
+    // данных
     struct sockaddr_in server_address;
     memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET;
@@ -17,7 +18,7 @@ void run_pasv(struct user* const current_user) {
     const int option = 1;
     setsockopt(data_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
     if (bind(data_socket, (struct sockaddr*)&server_address, sizeof(server_address)) == -1) {
-		fprintf(stderr, "Data connection socket binding error: %s\n", strerror(errno));
+        fprintf(stderr, "Data connection socket binding error: %s\n", strerror(errno));
         send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
         return;
     }
@@ -40,7 +41,8 @@ void run_pasv(struct user* const current_user) {
             ip_addr_ftp[i] = ',';
         }
     }
-    snprintf(response, BUFFER_SIZE, "227 Entering Passive Mode (%s,%d,%d)\r\n", ip_addr_ftp, data_port / 256, data_port % 256);
+    snprintf(response, BUFFER_SIZE, "227 Entering Passive Mode (%s,%d,%d)\r\n", ip_addr_ftp,
+             data_port / 256, data_port % 256);
     send_response(current_user->control_socket, response);
     current_user->data_connection_type = PASSIVE;
 }
