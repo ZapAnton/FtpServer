@@ -1,35 +1,25 @@
 #include "commands/rmd.h"
 
 void run_rmd(struct user* const current_user, char* const argument) {
-	if (!current_user->authenticated) {
+    if (!current_user->authenticated) {
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
     }
     if (!argument) {
-		send_response(current_user->control_socket, "550 Invalid path\r\n");
+        send_response(current_user->control_socket, "550 Invalid path\r\n");
         return;
-	}
-	
-    char absolute_path[PARAM_SIZE];
-    get_absolute_path(argument, absolute_path, current_user->current_directory);
-
-    // Проверка, существует ли каталог и есть ли у пользователя разрешение на его удаление
-	//pthread_mutex_lock(&fs_mutex);
-    if (access(absolute_path, F_OK) == -1 || access(absolute_path, W_OK) == -1) {
-        send_response(current_user->control_socket, "550 Requested action not taken. File unavailable.\r\n");
-        //pthread_mutex_unlock(&fs_mutex);
-		return;
     }
 
+    char filepath[BUFFER_SIZE];
+    sprintf(filepath, "%s/%s", current_user->current_directory, argument);
+    if (!file_exists(filepath)) {
+        send_response(current_user->control_socket, "550 Specified directory does not exist.\r\n");
+        return;
+    }
     // Попытка удалить каталог
-    if (rmdir(absolute_path) == -1) {
-        send_response(current_user->control_socket, "550 Requested action not taken. File unavailable.\r\n");
-        //pthread_mutex_unlock(&fs_mutex);
-		return;
+    if (rmdir_mutex(filepath) != 0) {
+        send_response(current_user->control_socket, "550 Failed to delete directory.\r\n");
+        return;
     }
-	
-	//pthread_mutex_unlock(&fs_mutex);
-    send_response(current_user->control_socket, "250 Requested file action okay, completed.\r\n");
+    send_response(current_user->control_socket, "250 Requested directory delete okay.\r\n");
 }
-
-

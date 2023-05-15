@@ -1,30 +1,26 @@
+#include "command.h"
+#include "config.h"
+#include "consts.h"
+#include "user.h"
+#include "utils.h"
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <pthread.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
-#include <unistd.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <dirent.h>
-#include <errno.h>
-#include "utils.h"
-#include "user.h"
-#include "consts.h"
-#include "config.h"
-#include "command.h"
+#include <unistd.h>
 
-struct Config config = {
-    .command_port = 0,
-    .username = "",
-    .password = "",
-    .timeout = 0,
-    .server_directory = "",
-    .tar_command_path = "",
-    .bz2_command_path = ""
-}; // Инициализируем структуру
+struct Config config = {.command_port = 0,
+                        .username = "",
+                        .password = "",
+                        .timeout = 0,
+                        .server_directory = "",
+                        .tar_command_path = "",
+                        .bz2_command_path = ""}; // Инициализируем структуру
 
 int thread_count = 1;
 bool running = true;
@@ -50,34 +46,36 @@ void thread_count_inc() {
     pthread_mutex_unlock(&mutex);
 }
 
-void *handle_client(void *arg) {
-    int client_socket = *(int*) arg;
+void* handle_client(void* arg) {
+    int client_socket = *(int*)arg;
     free(arg);
-    printf("Thread No %lu accepted the connection. Current thread count is %d\n", pthread_self(), get_thread_count());
-	// Отправка сообщения приветствия клиенту
+    printf("Thread No %lu accepted the connection. Current thread count is %d\n", pthread_self(),
+           get_thread_count());
+    // Отправка сообщения приветствия клиенту
     char* welcome_message = "220 FTP server is ready\r\n";
     send_response(client_socket, welcome_message);
-	// Чтение и обработка команд от клиента
-    char buffer[BUFFER_SIZE] = { '\0' };
-    struct user current_user = { 0 };
+    // Чтение и обработка команд от клиента
+    char buffer[BUFFER_SIZE] = {'\0'};
+    struct user current_user = {0};
     current_user.data_connection_type = ACTIVE;
     current_user.control_socket = client_socket;
-	strcpy(current_user.current_directory, config.server_directory);
-	while (true) {
-		int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
-		if (bytes_received <= 0) {
-			break;
-		}
-		buffer[bytes_received] = '\0';
-		const int status = process_command(buffer, &current_user, &config);
+    strcpy(current_user.current_directory, config.server_directory);
+    while (true) {
+        int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        if (bytes_received <= 0) {
+            break;
+        }
+        buffer[bytes_received] = '\0';
+        const int status = process_command(buffer, &current_user, &config);
         if (status == -1) {
             break;
         }
-	}
-	// Окончание обработки запросов клиента
+    }
+    // Окончание обработки запросов клиента
     close(client_socket);
     thread_count_inc();
-    printf("Thread No %lu closed the connection. Current thread count is %d\n", pthread_self(), get_thread_count());
+    printf("Thread No %lu closed the connection. Current thread count is %d\n", pthread_self(),
+           get_thread_count());
     pthread_exit(NULL);
 }
 
@@ -111,19 +109,19 @@ int main() {
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
 
     // Настройка адреса и порта для прослушивания входящих соединений
-    struct sockaddr_in server_address = { 0 };
+    struct sockaddr_in server_address = {0};
     memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = INADDR_ANY;
     server_address.sin_port = htons(config.command_port);
 
     // Связывание сокета с адресом и портом
-    if (bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address)) == 0) {
+    if (bind(server_socket, (struct sockaddr*)&server_address, sizeof(server_address)) == 0) {
         printf("FTP server is ready\r\n");
-	} else {
-		perror("Socket binding error with address and port");
-		exit(EXIT_FAILURE);
-	}
+    } else {
+        perror("Socket binding error with address and port");
+        exit(EXIT_FAILURE);
+    }
 
     // Установка сервера в режим прослушивания
     if (listen(server_socket, get_thread_count()) < 0) {
@@ -131,19 +129,21 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-	// Ожидание входящих соединений
+    // Ожидание входящих соединений
     while (running) {
         if (get_thread_count() < 1) {
             continue;
         }
-    // Ожидание входящего соединения
-        struct sockaddr_in client_address = { 0 };
+        // Ожидание входящего соединения
+        struct sockaddr_in client_address = {0};
         socklen_t client_address_length = sizeof(client_address);
-        int client_socket = accept(server_socket, (struct sockaddr*) &client_address, &client_address_length);
+        int client_socket =
+            accept(server_socket, (struct sockaddr*)&client_address, &client_address_length);
         if (client_socket < 0) {
-            fprintf(stderr, "Thread %lu: Error accepting incoming connection: %s\n", pthread_self(), strerror(errno));
+            fprintf(stderr, "Thread %lu: Error accepting incoming connection: %s\n", pthread_self(),
+                    strerror(errno));
             pthread_exit(NULL);
-        } 
+        }
         // Установка таймаута на прием данных
         struct timeval timeout;
         timeout.tv_sec = config.timeout;

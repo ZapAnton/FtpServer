@@ -20,13 +20,16 @@ void send_response(int client_socket, const char* response) {
 int establish_data_connection(struct user* current_user) {
     if (current_user->data_connection_type == ACTIVE) {
         current_user->data_socket = socket(AF_INET, SOCK_STREAM, 0);
-        if (connect(current_user->data_socket, (struct sockaddr*)&(current_user->data_address), sizeof(current_user->data_address)) < 0) {
+        if (connect(current_user->data_socket, (struct sockaddr*)&(current_user->data_address),
+                    sizeof(current_user->data_address)) < 0) {
             send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
             return -1;
         }
     } else {
         socklen_t data_address_length = sizeof(current_user->data_address);
-        current_user->client_data_socket = accept(current_user->data_socket, (struct sockaddr*) &current_user->data_address, &data_address_length);
+        current_user->client_data_socket =
+            accept(current_user->data_socket, (struct sockaddr*)&current_user->data_address,
+                   &data_address_length);
         if (current_user->client_data_socket < 0) {
             send_response(current_user->control_socket, "425 Can't open data connection.\r\n");
             return -1;
@@ -38,7 +41,7 @@ int establish_data_connection(struct user* current_user) {
 bool is_dir(const char* const path) {
     bool file_is_dir = false;
     pthread_mutex_lock(&fs_mutex);
-    struct stat statbuf = { 0 };
+    struct stat statbuf = {0};
     if (stat(path, &statbuf) != 0) {
         return false;
     }
@@ -55,13 +58,17 @@ bool file_exists(const char* const filepath) {
     return exists;
 }
 
-void make_archive_operation(char* dirpath, char* archive_filepath, const enum CompressorType compressor_type, enum ArchiveOperation archive_operation) {
-    const size_t command_length = strlen("tar -czf") + 1 + strlen(archive_filepath) + 1 + strlen("-C") + 1 + strlen(dirpath) + 1 + strlen(".");
+void make_archive_operation(char* dirpath, char* archive_filepath,
+                            const enum CompressorType compressor_type,
+                            enum ArchiveOperation archive_operation) {
+    const size_t command_length = strlen("tar -czf") + 1 + strlen(archive_filepath) + 1 +
+                                  strlen("-C") + 1 + strlen(dirpath) + 1 + strlen(".");
     char* command = calloc(command_length + 1, sizeof(char));
     const char compressor_flag = (compressor_type == GZIP) ? 'z' : 'j';
     const char operation_flag = (archive_operation == CREATE) ? 'c' : 'x';
     const char extra_char = (archive_operation == CREATE) ? '.' : ' ';
-    snprintf(command, command_length + 1, "tar -%c%cf %s -C %s %c", operation_flag, compressor_flag, archive_filepath, dirpath, extra_char);
+    snprintf(command, command_length + 1, "tar -%c%cf %s -C %s %c", operation_flag, compressor_flag,
+             archive_filepath, dirpath, extra_char);
     puts(command);
     pthread_mutex_lock(&fs_mutex);
     const int status = system(command);
@@ -74,13 +81,13 @@ void make_archive_operation(char* dirpath, char* archive_filepath, const enum Co
 
 void save_file(const struct user* current_user, const int data_socket, const char* const filepath) {
     pthread_mutex_lock(&fs_mutex);
-    FILE *file = fopen(filepath, "wb");
+    FILE* file = fopen(filepath, "wb");
     if (file == NULL) {
         send_response(current_user->control_socket, "550 Failed to open file.\r\n");
         return;
     }
     size_t n = 0;
-    char buf[BUFFER_SIZE] = { 0 };
+    char buf[BUFFER_SIZE] = {0};
     while ((n = recv(data_socket, buf, BUFFER_SIZE, 0)) > 0) {
         if (fwrite(buf, sizeof(char), n, file) != n) {
             send_response(current_user->control_socket, "550 Failed to write file.\r\n");
@@ -93,7 +100,8 @@ void save_file(const struct user* current_user, const int data_socket, const cha
     send_response(current_user->control_socket, "226 Transfer complete.\r\n");
 }
 
-void transfer_file(const struct user* current_user, const int data_socket, const char* const filepath) {
+void transfer_file(const struct user* current_user, const int data_socket,
+                   const char* const filepath) {
     pthread_mutex_lock(&fs_mutex);
     FILE* file = fopen(filepath, "rb");
     if (file == NULL) {
@@ -103,7 +111,7 @@ void transfer_file(const struct user* current_user, const int data_socket, const
     }
     char send_buffer[256] = {0};
     size_t bytes_read = 0;
-    while((bytes_read = fread(send_buffer, sizeof(char), sizeof(send_buffer), file)) > 0){
+    while ((bytes_read = fread(send_buffer, sizeof(char), sizeof(send_buffer), file)) > 0) {
         send(data_socket, send_buffer, bytes_read, 0);
     }
     fclose(file);
@@ -111,7 +119,8 @@ void transfer_file(const struct user* current_user, const int data_socket, const
     send_response(current_user->control_socket, "226 Transfer complete.\r\n");
 }
 
-void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath, const enum CompressorType compressor_type, const struct Config* config) {
+void transfer_dir(const struct user* current_user, const int data_socket, char* dirpath,
+                  const enum CompressorType compressor_type, const struct Config* config) {
     if (compressor_type == GZIP && !file_exists(config->tar_command_path)) {
         fprintf(stderr, "%s command not found", config->tar_command_path);
         send_response(current_user->control_socket, "550 tar command unavailable.\r\n");
@@ -133,7 +142,7 @@ void transfer_dir(const struct user* current_user, const int data_socket, char* 
 }
 
 char* format_perms(mode_t mode) {
-    char *perms = calloc(11, sizeof(char));
+    char* perms = calloc(11, sizeof(char));
     if (perms == NULL) {
         return NULL;
     }
@@ -176,8 +185,8 @@ char* format_time(time_t mtime) {
     char* time_str = calloc(time_str_length, sizeof(char));
     if (time_str == NULL) {
         return NULL;
-    } 
-    struct tm *ltm = localtime(&mtime);
+    }
+    struct tm* ltm = localtime(&mtime);
     strftime(time_str, time_str_length, "%b %d %H:%M", ltm);
     return time_str;
 }
@@ -198,17 +207,15 @@ void get_absolute_path(char* relative_path, char* absolute_path, char* current_d
     }
 }
 
-size_t get_cpu_count(void) {
-    return sysconf(_SC_NPROCESSORS_ONLN);
-}
+size_t get_cpu_count(void) { return sysconf(_SC_NPROCESSORS_ONLN); }
 
 int parse_config_file(struct Config* config) {
-	FILE *fp = fopen("config.conf", "r");
+    FILE* fp = fopen("config.conf", "r");
     if (fp == NULL) {
         perror("Error opening config file");
         return 1;
     }
-	char line[PARAM_SIZE];
+    char line[PARAM_SIZE];
     char key[PARAM_SIZE];
     char value[PARAM_SIZE];
     while (fgets(line, sizeof(line), fp)) {
@@ -217,7 +224,7 @@ int parse_config_file(struct Config* config) {
             fclose(fp);
             return 1;
         }
-		if (strcmp(key, "command_port") == 0) {
+        if (strcmp(key, "command_port") == 0) {
             config->command_port = atoi(value);
         } else if (strcmp(key, "username") == 0) {
             strcpy(config->username, value);
@@ -226,11 +233,12 @@ int parse_config_file(struct Config* config) {
         } else if (strcmp(key, "timeout") == 0) {
             config->timeout = atoi(value);
         } else if (strcmp(key, "server_directory") == 0) {
-			if (!file_exists(value)) {
-				fprintf(stderr, "Error parsing line: %sDirectory '%s' does not exist.\n", line, value);
-				fclose(fp);
-				return 1;
-			}
+            if (!file_exists(value)) {
+                fprintf(stderr, "Error parsing line: %sDirectory '%s' does not exist.\n", line,
+                        value);
+                fclose(fp);
+                return 1;
+            }
             strcpy(config->server_directory, value);
         } else if (strcmp(key, "tar_command_path") == 0) {
             strcpy(config->tar_command_path, value);
@@ -238,11 +246,36 @@ int parse_config_file(struct Config* config) {
             strcpy(config->bz2_command_path, value);
         }
     }
-	if (ferror(fp)) {
+    if (ferror(fp)) {
         perror("Error reading config file");
         fclose(fp);
         return 1;
     }
     fclose(fp);
     return 0;
+}
+
+int rename_mutex(const char* old_name, const char* new_name) {
+    pthread_mutex_lock(&fs_mutex);
+    const int status = rename(old_name, new_name);
+    pthread_mutex_unlock(&fs_mutex);
+    return status;
+}
+
+int mkdir_mutex(const char* pathname, mode_t mode) {
+    pthread_mutex_lock(&fs_mutex);
+    const int status = mkdir(pathname, mode);
+    pthread_mutex_unlock(&fs_mutex);
+    return status;
+}
+
+int rmdir_mutex(const char* pathname) {
+    const size_t command_length = strlen("rm -rf") + 1 + strlen(pathname);
+    char* command = calloc(command_length + 1, sizeof(char));
+    snprintf(command, command_length + 1, "rm -rf %s", pathname);
+    pthread_mutex_lock(&fs_mutex);
+    const int status = system(command);
+    pthread_mutex_unlock(&fs_mutex);
+    free(command);
+    return status;
 }
