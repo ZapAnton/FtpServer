@@ -9,7 +9,7 @@ void run_stor(struct user* const current_user, char* const argument) {
         return;
     }
     send_response(current_user->control_socket,
-                  "150 Opening ASCII mode data connection for entry list\r\n");
+                  "150 Opening data connection\r\n");
     enum CompressorType compressor_type = NONE;
     if (str_ends_with(argument, ".tar.gz")) {
         compressor_type = GZIP;

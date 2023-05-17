@@ -5,7 +5,7 @@ void run_retr(struct user* current_user, const char* const filepath, const struc
         send_response(current_user->control_socket, "530 Not logged in.\r\n");
         return;
     }
-    send_response(current_user->control_socket, "150 Opening ASCII mode data connection\r\n");
+    send_response(current_user->control_socket, "150 Opening data connection\r\n");
     if (establish_data_connection(current_user) == -1) {
         return;
     }

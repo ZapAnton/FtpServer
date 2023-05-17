@@ -1,5 +1,6 @@
 #pragma once
 
+#include "data_connection.h"
 #include "user.h"
 #include "utils.h"
 #include <arpa/inet.h>

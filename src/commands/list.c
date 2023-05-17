@@ -10,7 +10,7 @@ void run_list(struct user* const current_user, const char* const argument) {
     }
     // Отправка клиенту сообщения о начале передачи списка файлов
     send_response(current_user->control_socket,
-                  "150 Opening ASCII mode data connection for entry list\r\n");
+                  "150 Opening data connection\r\n");
     // Получение списка файлов
     size_t directory_path_length = strlen(current_user->current_directory);
     if (argument) {

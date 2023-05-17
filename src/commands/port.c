@@ -1,5 +1,4 @@
 #include "commands/port.h"
-#include "data_connection.h"
 
 void run_port(struct user* const current_user, char* const argument) {
     if (!current_user->authenticated) {
