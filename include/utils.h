@@ -25,6 +25,8 @@ enum ArchiveOperation {
 
 void send_response(int client_socket, const char* response);
 
+void get_current_datetime(char* datetime_str);
+
 int establish_data_connection(struct user* current_user);
 
 bool is_dir(const char* const path);

@@ -17,6 +17,15 @@ void send_response(int client_socket, const char* response) {
     }
 }
 
+void get_current_datetime(char* datetime_str) {
+	time_t rawtime;
+	struct tm *timeinfo;
+
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+	strftime(datetime_str, strlen("DD-MMM-YYYY HH:MM:SS") + 1,"%d-%b-%Y %H:%M:%S", timeinfo);
+}
+
 int establish_data_connection(struct user* current_user) {
     if (current_user->data_connection_type == ACTIVE) {
         current_user->data_socket = socket(AF_INET, SOCK_STREAM, 0);

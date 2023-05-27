@@ -49,7 +49,10 @@ enum Command command_str_to_enum(const char* const command_str) {
 }
 
 int process_command(char* buffer, struct user* current_user, const struct Config* config) {
-    puts(buffer);
+	char datetime_str[64] = {0};
+	get_current_datetime(datetime_str);
+	printf("%s %s", datetime_str, buffer);
+	
     const char* command_str = strtok(buffer, " \r\n");
     char* argument = strtok(NULL, " \r\n");
     const enum Command command = command_str_to_enum(command_str);
