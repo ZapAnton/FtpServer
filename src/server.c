@@ -3,6 +3,8 @@
 #include "consts.h"
 #include "user.h"
 #include "utils.h"
+#include <signal.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -22,9 +24,15 @@ struct Config config = {.command_port = 0,
                         .tar_command_path = "",
                         .bz2_command_path = ""}; // Инициализируем структуру
 
+volatile bool running = true;
 int thread_count = 1;
-bool running = true;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void handle_sigint(int sig)
+{
+	printf("\nSIGINT = %d - Stopping FTP server.\n", sig);
+    running = false;
+}
 
 int get_thread_count() {
     int current_thread_count = 0;
@@ -60,7 +68,7 @@ void* handle_client(void* arg) {
     current_user.data_connection_type = ACTIVE;
     current_user.control_socket = client_socket;
     strcpy(current_user.current_directory, config.server_directory);
-    while (true) {
+    while (running) {
         int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
         if (bytes_received <= 0) {
             break;
@@ -93,6 +101,7 @@ void create_worker_thread(int* client_socket) {
 }
 
 int main() {
+	signal(SIGINT, handle_sigint);
     puts("Starting FTP server.");
     if (parse_config_file(&config) != 0) {
         return -1;
@@ -129,16 +138,41 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+	//Подготовка структуры fd_set для использования с функцией select()
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(server_socket, &read_fds);
+		
     // Ожидание входящих соединений
     while (running) {
         if (get_thread_count() < 1) {
             continue;
         }
+		// Вызов select() для проверки состояния сокета
+        int select_result = select(server_socket + 1, &read_fds, NULL, NULL, NULL);
+        if (select_result == -1)
+        {
+            if (errno == EINTR)
+            {
+                // select() был прерван сигналом, продолжить следующую итерацию цикла
+                continue;
+            }
+            else
+            {
+                // Обработка других ошибок select()
+                perror("Error in select");
+                break;  // Выход из цикла и завершение программы
+            }
+        }
         // Ожидание входящего соединения
         struct sockaddr_in client_address = {0};
-        socklen_t client_address_length = sizeof(client_address);
-        int client_socket =
-            accept(server_socket, (struct sockaddr*)&client_address, &client_address_length);
+        socklen_t client_address_length = sizeof(client_address);        
+        int client_socket = -1;
+        if (FD_ISSET(server_socket, &read_fds))
+        {
+            // Вызов accept() для принятия входящего подключения
+            client_socket = accept(server_socket, (struct sockaddr*)&client_address, &client_address_length);
+        }
         if (client_socket < 0) {
             fprintf(stderr, "Thread %lu: Error accepting incoming connection: %s\n", pthread_self(),
                     strerror(errno));
@@ -160,5 +194,6 @@ int main() {
     // Завершение работы сервера
     close(server_socket);
     pthread_mutex_destroy(&mutex);
+	printf("\nFTP server is stopped.\n");
     return 0;
 }
