@@ -31,7 +31,9 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 void handle_sigint(int sig)
 {
 	printf("\nSIGINT = %d - Stopping FTP server.\n", sig);
+    pthread_mutex_lock(&mutex);
     running = false;
+    pthread_mutex_unlock(&mutex);
 }
 
 int get_thread_count() {
@@ -68,7 +70,7 @@ void* handle_client(void* arg) {
     current_user.data_connection_type = ACTIVE;
     current_user.control_socket = client_socket;
     strcpy(current_user.current_directory, config.server_directory);
-    while (running) {
+    while (true) {
         int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
         if (bytes_received <= 0) {
             break;
@@ -95,6 +97,7 @@ void create_worker_thread(int* client_socket) {
     if (pthread_create(&thread, NULL, handle_client, client_socket) != 0) {
         fprintf(stderr, "Error creating thread for client\n");
         thread_count_inc();
+        free(client_socket);
         return;
     }
     pthread_detach(thread);
